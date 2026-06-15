@@ -28,7 +28,6 @@
               <input v-model="rememberMe" type="checkbox" />
               <span>Запомнить меня</span>
             </label>
-            <button class="link-blue" type="button">Забыли пароль?</button>
           </div>
           <button class="primary wide" type="submit" :disabled="loading">Войти</button>
           <p v-if="message.text" :class="['message', message.kind]">{{ message.text }}</p>
