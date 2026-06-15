@@ -7,7 +7,7 @@
         <button class="link-button" @click="logout">Выход</button>
       </div>
       <div v-else class="topbar-user">
-        <span>Вход</span>
+        <span>↪ Вход</span>
       </div>
     </header>
 
@@ -16,19 +16,19 @@
         <h1>Вход в систему</h1>
         <form class="form-stack" @submit.prevent="login">
           <label>
-            <span>Логин</span>
-            <input v-model.trim="loginForm.username" autocomplete="username" placeholder="student, curator, examiner, admin" />
+            <span>Логин или email</span>
+            <input v-model.trim="loginForm.username" autocomplete="username" placeholder="Введите логин или email" />
           </label>
           <label>
             <span>Пароль</span>
-            <input v-model="loginForm.password" type="password" autocomplete="current-password" placeholder="1234" />
+            <input v-model="loginForm.password" type="password" autocomplete="current-password" placeholder="Введите пароль" />
           </label>
           <div class="inline-row split">
             <label class="check-row">
               <input v-model="rememberMe" type="checkbox" />
               <span>Запомнить меня</span>
             </label>
-            <span class="muted">demo: 1234</span>
+            <button class="link-blue" type="button">Забыли пароль?</button>
           </div>
           <button class="primary wide" type="submit" :disabled="loading">Войти</button>
           <p v-if="message.text" :class="['message', message.kind]">{{ message.text }}</p>
@@ -246,16 +246,12 @@
         </section>
 
         <section v-if="currentPage === 'users'" class="stack">
-          <div class="panel">
+          <div class="panel register-panel">
             <h2>Создание нового пользователя</h2>
-            <form class="two-column-form" @submit.prevent="registerUser">
+            <form class="registration-form" @submit.prevent="registerUser">
               <label>
                 <span>ФИО</span>
                 <input v-model.trim="registerForm.fullName" placeholder="Введите ФИО полностью" required />
-              </label>
-              <label>
-                <span>Email</span>
-                <input v-model.trim="registerForm.email" type="email" placeholder="Введите email" required />
               </label>
               <label>
                 <span>Роль</span>
@@ -267,11 +263,7 @@
                 </select>
               </label>
               <label>
-                <span>Логин</span>
-                <input v-model.trim="registerForm.username" placeholder="Введите логин" required />
-              </label>
-              <label>
-                <span>Класс</span>
+                <span>Класс (для учеников)</span>
                 <select v-model.number="registerForm.classId" :disabled="registerForm.role !== 'STUDENT'">
                   <option :value="null">Выберите класс</option>
                   <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
@@ -280,24 +272,29 @@
                 </select>
               </label>
               <label>
-                <span>Пароль</span>
-                <input v-model="registerForm.password" placeholder="Введите пароль" required />
-              </label>
-              <label>
                 <span>Дата рождения</span>
                 <input v-model="registerForm.birthDate" type="date" />
               </label>
               <label>
-                <span>Контакты</span>
-                <input v-model.trim="registerForm.contactInfo" placeholder="Телефон или email" />
+                <span>Email</span>
+                <input v-model.trim="registerForm.email" type="email" placeholder="Введите email" required />
               </label>
               <label>
-                <span>Паспортные данные</span>
-                <input v-model.trim="registerForm.passportData" placeholder="Серия и номер" />
+                <span>Логин</span>
+                <input v-model.trim="registerForm.username" placeholder="Введите логин" required />
+              </label>
+              <label class="password-with-action">
+                <span>Пароль</span>
+                <input v-model="registerForm.password" placeholder="Введите пароль" required />
+                <button class="secondary compact" type="button" @click="generatePassword">Сгенерировать</button>
               </label>
               <label>
-                <span>Вступительный балл</span>
-                <input v-model.number="registerForm.entranceExamScore" type="number" min="0" :disabled="registerForm.role !== 'STUDENT'" />
+                <span>Подтверждение пароля</span>
+                <input v-model="confirmPassword" placeholder="Повторите пароль" required />
+              </label>
+              <label class="check-row full">
+                <input v-model="sendCredentials" type="checkbox" />
+                <span>Отправить учетные данные пользователю на email</span>
               </label>
               <div class="actions">
                 <button class="primary" type="submit" :disabled="loading">Создать пользователя</button>
@@ -327,6 +324,8 @@
                   <th>Логин</th>
                   <th>Email</th>
                   <th>Статус</th>
+                  <th>Дата создания</th>
+                  <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,6 +336,11 @@
                   <td>{{ user.username }}</td>
                   <td>{{ user.email }}</td>
                   <td><span class="status ok"></span>{{ user.active ? 'Активен' : 'Отключен' }}</td>
+                  <td>-</td>
+                  <td class="table-actions">
+                    <button class="icon-button" type="button" title="Редактировать">✎</button>
+                    <button class="icon-button" type="button" title="Удалить">⌫</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -344,19 +348,15 @@
         </section>
 
         <section v-if="currentPage === 'exams'" class="stack">
-          <div v-if="session.role === 'EXAMINER'" class="panel">
+          <div v-if="session.role === 'EXAMINER'" class="panel exam-create-panel">
             <h2>Создание экзамена</h2>
-            <form class="two-column-form" @submit.prevent="createExam">
+            <form class="exam-create-form" @submit.prevent="createExam">
               <label>
-                <span>Название</span>
+                <span>Название экзамена:</span>
                 <input v-model.trim="examForm.title" placeholder="Например: Математика" required />
               </label>
               <label>
-                <span>Предмет</span>
-                <input v-model.trim="examForm.subject" placeholder="Предмет" required />
-              </label>
-              <label>
-                <span>Класс</span>
+                <span>Класс:</span>
                 <select v-model.number="examForm.classId" required>
                   <option :value="null">Выберите класс</option>
                   <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
@@ -365,19 +365,36 @@
                 </select>
               </label>
               <label>
-                <span>Длительность, мин</span>
+                <span>Предмет:</span>
+                <input v-model.trim="examForm.subject" placeholder="Предмет" required />
+              </label>
+              <label>
+                <span>Дата и время начала:</span>
+                <input v-model="examForm.scheduledStartTime" type="datetime-local" />
+              </label>
+              <label>
+                <span>Продолжительность (мин):</span>
                 <input v-model.number="examForm.durationMinutes" type="number" min="1" />
               </label>
-              <label class="full">
-                <span>Описание</span>
+              <label>
+                <span>Количество вопросов:</span>
+                <input :value="examQuestionCount" type="number" min="0" readonly />
+              </label>
+              <label>
+                <span>Описание (необязательно):</span>
                 <textarea v-model.trim="examForm.description" placeholder="Краткое описание экзамена"></textarea>
               </label>
-              <label class="full">
-                <span>Вопросы</span>
+              <label>
+                <span>Вопросы:</span>
                 <textarea v-model="examQuestionsText" placeholder="Один вопрос на строку"></textarea>
+              </label>
+              <label class="file-row">
+                <span>Прикрепить файл с вопросами:</span>
+                <input type="file" />
               </label>
               <div class="actions">
                 <button class="primary" type="submit" :disabled="loading">Создать экзамен</button>
+                <button class="secondary" type="button">Отмена</button>
               </div>
             </form>
           </div>
@@ -410,153 +427,253 @@
             </table>
           </div>
 
-          <div v-if="selectedExam" class="panel">
+          <div v-if="selectedExam && session.role === 'EXAMINER'" class="panel exam-monitor-panel">
             <div class="inline-row split">
-              <h2>{{ selectedExam.exam.title }}</h2>
-              <span :class="['badge', selectedExam.exam.status.toLowerCase()]">{{ statusLabel(selectedExam.exam.status) }}</span>
+              <div>
+                <h2>Экзамен: {{ selectedExam.exam.title }} <span v-if="selectedExam.exam.schoolClass">({{ selectedExam.exam.schoolClass.name }})</span></h2>
+                <p>Статус: <span :class="selectedExam.exam.status === 'ACTIVE' ? 'positive' : ''">{{ statusLabel(selectedExam.exam.status) }}</span></p>
+              </div>
+              <div class="inline-actions">
+                <button v-if="selectedExam.exam.status === 'ACTIVE'" class="danger" @click="finishExam(selectedExam.exam.id)">Завершить экзамен</button>
+                <button class="secondary" @click="refreshCurrent">Обновить</button>
+              </div>
             </div>
 
-            <div v-if="session.role === 'EXAMINER'" class="grid two">
-              <section>
-                <h3>Мониторинг</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Событие</th>
-                      <th>Время</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="event in realtimeEvents" :key="event.id">
-                      <td>{{ event.type }}</td>
-                      <td>{{ event.time }}</td>
-                    </tr>
-                    <tr v-if="!realtimeEvents.length">
-                      <td colspan="2">Событий пока нет</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <button class="secondary" @click="connectExamSocket(selectedExam.exam.id)">Подключить WebSocket</button>
-              </section>
+            <div class="tabs exam-tabs">
+              <button class="active" type="button">Мониторинг</button>
+              <button type="button">Вопросы</button>
+              <button type="button">Нарушения</button>
+              <button type="button">Итоговые баллы</button>
+            </div>
 
-              <section>
-                <h3>Итоговые баллы</h3>
-                <div class="score-list">
-                  <label v-for="student in classStudentsForSelectedExam" :key="student.id">
-                    <span>{{ student.fullName }}</span>
-                    <input v-model.number="gradeForm[student.id]" type="number" min="0" />
-                  </label>
+            <table class="monitor-table">
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Ученик</th>
+                  <th>Статус</th>
+                  <th>Ответы</th>
+                  <th>Время</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(student, index) in classStudentsForSelectedExam" :key="student.id">
+                  <td>{{ index + 1 }}</td>
+                  <td>{{ student.fullName }}</td>
+                  <td><span class="status ok"></span>Активен</td>
+                  <td>{{ answerCountForStudent(student.id) }} / {{ selectedExam.questions.length }}</td>
+                  <td>{{ examElapsedLabel(selectedExam.exam) }}</td>
+                  <td><button class="secondary compact" type="button">Открыть</button></td>
+                </tr>
+                <tr v-if="!classStudentsForSelectedExam.length">
+                  <td colspan="6">Участников пока нет</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="exam-bottom-grid">
+              <section class="panel compact-panel">
+                <h3>Фиксация нарушения</h3>
+                <div class="violation-form">
+                  <select>
+                    <option>Выберите ученика</option>
+                    <option v-for="student in classStudentsForSelectedExam" :key="student.id">{{ student.fullName }}</option>
+                  </select>
+                  <button class="primary" type="button">Зафиксировать</button>
+                  <textarea placeholder="Описание нарушения"></textarea>
                 </div>
-                <button class="primary" :disabled="selectedExam.exam.status !== 'FINISHED'" @click="gradeExam">Сохранить баллы</button>
               </section>
-            </div>
-
-            <div v-if="session.role === 'STUDENT'" class="student-exam">
-              <div v-if="selectedExam.exam.status !== 'ACTIVE'" class="empty-state">Экзамен пока недоступен для прохождения.</div>
-              <form v-else class="question-list" @submit.prevent="submitAllAnswers">
-                <label v-for="question in selectedExam.questions" :key="question.id">
-                  <span>{{ question.orderIndex }}. {{ question.text }}</span>
-                  <textarea v-model="answerDrafts[question.id]" placeholder="Введите ответ"></textarea>
-                </label>
-                <button class="primary" type="submit">Сохранить ответы</button>
-              </form>
+              <section class="panel compact-panel">
+                <h3>Быстрые действия</h3>
+                <div class="quick-actions">
+                  <button class="secondary" type="button">Сообщение ученикам</button>
+                  <button class="secondary" type="button" @click="refreshCurrent">Обновить список</button>
+                  <button class="secondary" type="button" @click="connectExamSocket(selectedExam.exam.id)">Подключить WebSocket</button>
+                </div>
+              </section>
             </div>
 
             <div class="results-block">
-              <h3>Результаты</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ученик</th>
-                    <th>Баллы</th>
-                    <th>Место</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="result in selectedExam.results" :key="result.id">
-                    <td>{{ result.student?.fullName || result.student?.username || result.student?.id }}</td>
-                    <td>{{ result.finalScore }}</td>
-                    <td>{{ result.rankPlace || '-' }}</td>
-                  </tr>
-                  <tr v-if="!selectedExam.results.length">
-                    <td colspan="3">Результаты еще не выставлены</td>
-                  </tr>
-                </tbody>
-              </table>
+              <h3>Итоговые баллы</h3>
+              <div class="score-list">
+                <label v-for="student in classStudentsForSelectedExam" :key="student.id">
+                  <span>{{ student.fullName }}</span>
+                  <input v-model.number="gradeForm[student.id]" type="number" min="0" />
+                </label>
+              </div>
+              <button class="primary" :disabled="selectedExam.exam.status !== 'FINISHED'" @click="gradeExam">Сохранить баллы</button>
             </div>
+          </div>
+
+          <div v-if="selectedExam && session.role === 'STUDENT'" class="student-exam-frame">
+              <div v-if="selectedExam.exam.status !== 'ACTIVE'" class="empty-state">Экзамен пока недоступен для прохождения.</div>
+              <div v-else class="student-exam-layout">
+                <header class="exam-focus-head">
+                  <h2>Экзамен: {{ selectedExam.exam.title }}</h2>
+                  <strong>Время осталось: {{ examRemainingLabel(selectedExam.exam) }}</strong>
+                  <button class="secondary" type="button" @click="submitAllAnswers">Завершить экзамен</button>
+                </header>
+                <aside class="question-nav">
+                  <h3>Вопросы</h3>
+                  <button
+                    v-for="(question, index) in selectedExam.questions"
+                    :key="question.id"
+                    :class="{ active: currentQuestionIndex === index }"
+                    type="button"
+                    @click="currentQuestionIndex = index"
+                  >
+                    {{ question.orderIndex }}
+                  </button>
+                </aside>
+                <section v-if="currentQuestion" class="question-workarea">
+                  <div class="question-body">
+                    <h3>Вопрос {{ currentQuestion.orderIndex }}</h3>
+                    <p>{{ currentQuestion.text }}</p>
+                  </div>
+                  <label class="answer-box">
+                    <span>Ваш ответ / Решение:</span>
+                    <textarea v-model="answerDrafts[currentQuestion.id]" placeholder="Введите ответ"></textarea>
+                  </label>
+                  <div class="actions">
+                    <button class="primary" type="button" @click="saveCurrentAnswer">Сохранить ответ</button>
+                    <button class="secondary" type="button" @click="nextQuestion">Следующий вопрос →</button>
+                  </div>
+                </section>
+                <div class="exam-warning">Внимание! Экзамен работает в полноэкранном режиме. Потеря фокуса будет зафиксирована как нарушение.</div>
+              </div>
           </div>
         </section>
 
         <section v-if="currentPage === 'votings'" class="stack">
-          <div v-if="session.role === 'CURATOR'" class="panel">
+          <div v-if="session.role === 'CURATOR'" class="tabs voting-tabs">
+            <button class="active" type="button">Создать голосование</button>
+            <button type="button">Активные голосования</button>
+            <button type="button">Завершенные голосования</button>
+          </div>
+
+          <div v-if="session.role === 'CURATOR'" class="panel voting-create-panel">
             <h2>Создание тайного голосования</h2>
-            <form class="two-column-form" @submit.prevent="createVoting">
-              <label>
-                <span>Название</span>
+            <form class="voting-create-form" @submit.prevent="createVoting">
+              <div class="voting-fields">
+                <label>
+                <span>Тема голосования:</span>
                 <input v-model.trim="votingForm.title" placeholder="Тема голосования" required />
-              </label>
-              <label>
-                <span>Класс</span>
-                <select v-model.number="votingForm.classId" required>
-                  <option :value="null">Выберите класс</option>
-                  <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
-                    {{ schoolClass.name }}
-                  </option>
-                </select>
-              </label>
-              <label class="full">
-                <span>Описание</span>
+                </label>
+                <label>
+                <span>Описание (необязательно):</span>
                 <textarea v-model.trim="votingForm.description"></textarea>
-              </label>
-              <label class="full">
-                <span>Варианты</span>
+                </label>
+                <label>
+                  <span>Класс:</span>
+                  <select v-model.number="votingForm.classId" required>
+                    <option :value="null">Выберите класс</option>
+                    <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
+                      {{ schoolClass.name }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  <span>Тип голосования:</span>
+                  <select>
+                    <option>Один вариант</option>
+                  </select>
+                </label>
+                <label>
+                <span>Кандидаты (варианты):</span>
                 <textarea v-model="votingOptionsText" placeholder="Один вариант на строку"></textarea>
-              </label>
-              <div class="actions">
+                </label>
+                <label>
+                  <span>Длительность голосования:</span>
+                  <select>
+                    <option>15 минут</option>
+                    <option>30 минут</option>
+                    <option>60 минут</option>
+                  </select>
+                </label>
                 <button class="primary" type="submit">Создать голосование</button>
               </div>
+              <aside class="panel voting-info">
+                <h3>ⓘ Информация</h3>
+                <ul>
+                  <li>Голоса студентов анонимны.</li>
+                  <li>Каждый студент может проголосовать только один раз.</li>
+                  <li>После завершения голосования результаты будут подсчитаны автоматически.</li>
+                </ul>
+              </aside>
             </form>
           </div>
 
           <div class="panel">
-            <h2>Голосования</h2>
+            <h2>{{ session.role === 'CURATOR' ? 'Активные голосования' : 'Голосования' }}</h2>
             <table>
               <thead>
                 <tr>
-                  <th>Название</th>
-                  <th>Класс</th>
+                  <th>Тема голосования</th>
                   <th>Статус</th>
+                  <th>Класс</th>
+                  <th>Проголосовало</th>
                   <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="voting in visibleVotings" :key="voting.id">
                   <td>{{ voting.title }}</td>
-                  <td>{{ voting.schoolClass?.name || '-' }}</td>
                   <td><span :class="['badge', voting.status.toLowerCase()]">{{ voting.status === 'ACTIVE' ? 'Активно' : 'Завершено' }}</span></td>
+                  <td>{{ voting.schoolClass?.name || '-' }}</td>
+                  <td>{{ selectedVoting?.voting.id === voting.id ? totalVotes(selectedVoting.results) : '-' }}</td>
                   <td class="table-actions">
-                    <button class="secondary compact" @click="openVoting(voting.id)">Открыть</button>
-                    <button v-if="session.role === 'CURATOR' && voting.status === 'ACTIVE'" class="danger compact" @click="finishVoting(voting.id)">Завершить</button>
+                    <button class="secondary compact" @click="openVoting(voting.id)">Просмотр</button>
+                    <button v-if="session.role === 'CURATOR' && voting.status === 'ACTIVE'" class="danger compact" @click="finishVoting(voting.id)">Завершить голосование</button>
                   </td>
+                </tr>
+                <tr v-if="!visibleVotings.length">
+                  <td colspan="5">Голосований пока нет</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <div v-if="selectedVoting" class="panel">
-            <h2>{{ selectedVoting.voting.title }}</h2>
-            <p>{{ selectedVoting.voting.description }}</p>
-            <div v-if="session.role === 'STUDENT' && selectedVoting.voting.status === 'ACTIVE'" class="option-list">
-              <button
-                v-for="option in selectedVoting.options"
-                :key="option.id"
-                class="option-button"
-                @click="submitVote(option.id)"
-              >
-                {{ option.label }}
-              </button>
+          <div v-if="selectedVoting && session.role === 'STUDENT'" class="voting-student-page">
+            <h2>Тайное голосование</h2>
+            <div class="voting-student-top">
+              <section class="panel voting-details">
+                <h3>Информация о голосовании</h3>
+                <dl>
+                  <dt>Название:</dt>
+                  <dd>{{ selectedVoting.voting.title }}</dd>
+                  <dt>Описание:</dt>
+                  <dd>{{ selectedVoting.voting.description || '-' }}</dd>
+                  <dt>Класс:</dt>
+                  <dd>{{ selectedVoting.voting.schoolClass?.name || '-' }}</dd>
+                  <dt>Статус:</dt>
+                  <dd>{{ selectedVoting.voting.status === 'ACTIVE' ? 'Активно' : 'Завершено' }}</dd>
+                </dl>
+              </section>
+              <section class="panel voting-timer">
+                <span>До окончания голосования:</span>
+                <strong>—</strong>
+                <div class="progress-line"><span></span></div>
+              </section>
             </div>
-            <h3>Итоги</h3>
+            <div class="anonymous-note">ⓘ Ваш голос анонимен и не может быть отслежен.</div>
+            <section class="panel candidate-panel">
+              <h3>Выберите вариант</h3>
+              <label v-for="option in selectedVoting.options" :key="option.id" class="candidate-row">
+                <input type="radio" name="vote-option" :value="option.id" v-model="selectedVoteOptionId" />
+                <span>{{ option.label }}</span>
+              </label>
+              <div v-if="!selectedVoting.options.length" class="empty-state">Вариантов пока нет</div>
+            </section>
+            <div class="actions">
+              <button class="primary" :disabled="!selectedVoteOptionId || selectedVoting.voting.status !== 'ACTIVE'" @click="submitSelectedVote">Отправить голос</button>
+              <button class="secondary" type="button">Отмена</button>
+              <span class="negative">Важно! После отправки изменить голос нельзя.</span>
+            </div>
+          </div>
+
+          <div v-if="selectedVoting && session.role !== 'STUDENT'" class="panel voting-results-panel">
+            <h2>Итоги голосований</h2>
             <table>
               <thead>
                 <tr>
@@ -685,6 +802,7 @@ interface ExamSession {
   status: ExamStatus
   schoolClass?: SchoolClass
   totalQuestions?: number
+  durationMinutes?: number
   scheduledStartTime?: string | null
 }
 
@@ -770,6 +888,8 @@ const selectedVoting = ref<VotingDetails | null>(null)
 const myResults = ref<ExamResult[]>([])
 const realtimeEvents = ref<RealtimeEvent[]>([])
 const stompClient = ref<Client | null>(null)
+const currentQuestionIndex = ref(0)
+const selectedVoteOptionId = ref<number | null>(null)
 
 const userRoleFilter = ref<Role | 'ALL'>('ALL')
 const userFilters = [
@@ -792,13 +912,16 @@ const registerForm = reactive({
   contactInfo: '',
   birthDate: ''
 })
+const confirmPassword = ref('')
+const sendCredentials = ref(true)
 
 const examForm = reactive({
   title: '',
   subject: '',
   classId: null as number | null,
   durationMinutes: 45,
-  description: ''
+  description: '',
+  scheduledStartTime: ''
 })
 const examQuestionsText = ref('Вопрос 1\nВопрос 2\nВопрос 3')
 const answerDrafts = reactive<Record<number, string>>({})
@@ -916,6 +1039,8 @@ const examinerHomeRows = computed(() => exams.value.slice(0, 6).map((exam) => ({
   participants: users.value.filter((user) => user.role === 'STUDENT' && (!exam.schoolClass?.name || user.className === exam.schoolClass.name)).length,
   status: statusLabel(exam.status)
 })))
+const examQuestionCount = computed(() => examQuestionsText.value.split('\n').map((text) => text.trim()).filter(Boolean).length)
+const currentQuestion = computed(() => selectedExam.value?.questions[currentQuestionIndex.value] || null)
 
 function authHeaders(): HeadersInit {
   return {
@@ -947,6 +1072,29 @@ function setMessage(text: string, kind: 'info' | 'success' | 'error' = 'info') {
 
 function formatNumber(value: number) {
   return value.toLocaleString('ru-RU')
+}
+
+function generatePassword() {
+  const password = Math.random().toString(36).slice(2, 10)
+  registerForm.password = password
+  confirmPassword.value = password
+}
+
+function answerCountForStudent(studentId: number) {
+  return selectedExam.value?.answers.filter((answer) => answer.userId === studentId && answer.text?.trim()).length || 0
+}
+
+function examElapsedLabel(exam: ExamSession) {
+  if (!exam.scheduledStartTime) return '-'
+  return new Date(exam.scheduledStartTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+function examRemainingLabel(exam: ExamSession) {
+  return `${exam.durationMinutes || 0}:00`
+}
+
+function totalVotes(results: Record<string, number>) {
+  return Object.values(results).reduce((sum, count) => sum + count, 0)
 }
 
 async function login() {
@@ -1037,11 +1185,16 @@ function resetRegisterForm() {
     contactInfo: '',
     birthDate: ''
   })
+  confirmPassword.value = ''
 }
 
 async function registerUser() {
   loading.value = true
   try {
+    if (registerForm.password !== confirmPassword.value) {
+      throw new Error('Пароли не совпадают')
+    }
+
     const body = {
       ...registerForm,
       classId: registerForm.role === 'STUDENT' ? registerForm.classId : null,
@@ -1084,6 +1237,7 @@ async function createExam() {
 
 async function openExam(id: number) {
   selectedExam.value = await api<ExamDetails>(`/exam/session/${id}/details`)
+  currentQuestionIndex.value = 0
   selectedExam.value.questions.forEach((question) => {
     const existing = selectedExam.value?.answers.find((answer) => answer.questionId === question.id && answer.userId === session.userId)
     answerDrafts[question.id] = existing?.text || answerDrafts[question.id] || ''
@@ -1125,6 +1279,33 @@ async function submitAllAnswers() {
   }
   await openExam(selectedExam.value.exam.id)
   setMessage('Ответы сохранены', 'success')
+}
+
+async function saveCurrentAnswer() {
+  if (!selectedExam.value || !currentQuestion.value || !session.userId) return
+
+  const text = answerDrafts[currentQuestion.value.id]?.trim()
+  if (!text) {
+    setMessage('Введите ответ перед сохранением', 'error')
+    return
+  }
+
+  await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers`, {
+    method: 'POST',
+    body: JSON.stringify({
+      studentId: session.userId,
+      questionId: currentQuestion.value.id,
+      text,
+      finalSubmitted: true
+    })
+  })
+  await openExam(selectedExam.value.exam.id)
+  setMessage('Ответ сохранен', 'success')
+}
+
+function nextQuestion() {
+  if (!selectedExam.value?.questions.length) return
+  currentQuestionIndex.value = Math.min(currentQuestionIndex.value + 1, selectedExam.value.questions.length - 1)
 }
 
 async function gradeExam() {
@@ -1183,6 +1364,7 @@ async function createVoting() {
 
 async function openVoting(id: number) {
   selectedVoting.value = await api<VotingDetails>(`/vote/secret/${id}`)
+  selectedVoteOptionId.value = null
 }
 
 async function submitVote(optionId: number) {
@@ -1197,6 +1379,11 @@ async function submitVote(optionId: number) {
   } catch (error) {
     setMessage(error instanceof Error ? error.message : 'Ошибка голосования', 'error')
   }
+}
+
+async function submitSelectedVote() {
+  if (!selectedVoteOptionId.value) return
+  await submitVote(selectedVoteOptionId.value)
 }
 
 async function finishVoting(id: number) {

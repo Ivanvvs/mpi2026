@@ -376,6 +376,304 @@ h3 {
   font-weight: 600;
 }
 
+.link-blue {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0058ff;
+}
+
+.registration-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 54px;
+  max-width: 1080px;
+}
+
+.password-with-action {
+  grid-template-columns: 1fr auto;
+}
+
+.password-with-action span {
+  grid-column: 1 / -1;
+}
+
+.password-with-action input {
+  min-width: 0;
+}
+
+.icon-button {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid #8f98a7;
+  background: #ffffff;
+}
+
+.exam-create-panel,
+.voting-create-panel,
+.exam-monitor-panel {
+  padding: 22px;
+}
+
+.exam-create-form {
+  display: grid;
+  grid-template-columns: 210px minmax(280px, 460px) 1fr;
+  gap: 14px 24px;
+  align-items: start;
+}
+
+.exam-create-form label,
+.voting-fields label {
+  display: contents;
+}
+
+.exam-create-form label > span,
+.voting-fields label > span {
+  align-self: center;
+  font-weight: 700;
+}
+
+.exam-create-form input,
+.exam-create-form select,
+.exam-create-form textarea {
+  grid-column: 2;
+}
+
+.exam-create-form textarea {
+  min-height: 80px;
+}
+
+.exam-create-form .file-row input {
+  padding: 6px;
+}
+
+.exam-create-form .actions {
+  grid-column: 2;
+}
+
+.exam-tabs {
+  margin-bottom: 10px;
+}
+
+.exam-tabs button {
+  min-width: 150px;
+  text-align: center;
+}
+
+.monitor-table {
+  margin-bottom: 16px;
+}
+
+.exam-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+}
+
+.compact-panel {
+  padding: 14px;
+}
+
+.violation-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) auto;
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.violation-form textarea {
+  grid-column: 1;
+}
+
+.student-exam-frame {
+  border: 2px solid #333333;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.student-exam-layout {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 20px 32px;
+}
+
+.exam-focus-head {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 24px;
+}
+
+.exam-focus-head h2 {
+  margin-bottom: 0;
+}
+
+.exam-focus-head strong {
+  color: #2f80ed;
+  font-size: 22px;
+}
+
+.question-nav {
+  display: grid;
+  align-content: start;
+}
+
+.question-nav button {
+  min-height: 42px;
+  border: 1px solid #8f98a7;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.question-nav button.active {
+  border-color: #1269f3;
+  background: #eef5ff;
+  color: #0058ff;
+}
+
+.question-workarea {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
+  gap: 20px;
+  border: 1px solid #8f98a7;
+  padding: 22px;
+}
+
+.question-workarea .actions {
+  grid-column: 2;
+}
+
+.answer-box textarea {
+  min-height: 190px;
+}
+
+.exam-warning {
+  grid-column: 1 / 2;
+  border: 2px solid #eb5757;
+  padding: 12px;
+  font-weight: 700;
+}
+
+.voting-tabs {
+  margin-bottom: -12px;
+}
+
+.voting-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.55fr);
+  gap: 28px;
+}
+
+.voting-fields {
+  display: grid;
+  grid-template-columns: 190px minmax(260px, 460px) auto;
+  gap: 12px 20px;
+}
+
+.voting-fields textarea {
+  min-height: 70px;
+}
+
+.voting-fields button.primary {
+  grid-column: 2;
+}
+
+.voting-info {
+  min-height: 180px;
+}
+
+.voting-info ul {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.voting-student-page {
+  display: grid;
+  gap: 20px;
+}
+
+.voting-student-top {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+}
+
+.voting-details dl {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 14px 24px;
+  margin: 0;
+}
+
+.voting-details dt {
+  font-weight: 700;
+}
+
+.voting-details dd {
+  margin: 0;
+}
+
+.voting-timer {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+}
+
+.voting-timer strong {
+  color: #eb5757;
+  font-size: 38px;
+}
+
+.progress-line {
+  width: 100%;
+  height: 34px;
+  border: 1px solid #8f98a7;
+}
+
+.progress-line span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: #eb2027;
+}
+
+.anonymous-note {
+  border: 1px solid #f2994a;
+  background: #fff8e8;
+  padding: 14px 20px;
+  color: #5c3b00;
+  font-size: 17px;
+}
+
+.candidate-panel {
+  display: grid;
+  gap: 0;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 50px;
+  border-bottom: 1px solid #d7dbe3;
+  font-size: 18px;
+}
+
+.candidate-row input {
+  width: 20px;
+  min-height: 20px;
+}
+
+.voting-results-panel {
+  display: grid;
+  gap: 16px;
+}
+
 .form-stack,
 .two-column-form {
   display: grid;
