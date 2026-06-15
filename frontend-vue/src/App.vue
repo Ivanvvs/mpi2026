@@ -1,581 +1,1026 @@
 <template>
-  <header>
-    <h1>Classroom of the Elite</h1>
-  </header>
-
-  <nav>
-    <button @click="showPage('login')">Login</button>
-    <button @click="showPage('dashboard')">Dashboard</button>
-    <button @click="showPage('exam')">Exam</button>
-    <button @click="showPage('violations')">Violations</button>
-    <button @click="showPage('voting')">Secret Voting</button>
-    <button @click="showPage('planned')">Planned Features</button>
-    <button @click="showPage('admin')">Admin / Debug</button>
-  </nav>
-
-  <main>
-    <!-- LOGIN PAGE -->
-    <section v-if="currentPage === 'login'">
-      <h2>Авторизация</h2>
-      <p>
-        Вход в систему.
-      </p>
-
-      <input v-model="loginUsername" type="text" placeholder="Username, например student" />
-      <input v-model="loginPassword" type="password" placeholder="Password, например 1234" />
-
-      <button @click="login">Login</button>
-      <button @click="logout">Logout</button>
-
-      <p>{{ loginStatus }}</p>
-
-      <div class="hint">
-        <p>Тестовые пользователи:</p>
-        <pre>student / 1234
-examiner / 1234
-admin / 1234</pre>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">SCHOOL SYSTEM</div>
+      <div v-if="session.token" class="topbar-user">
+        <span>{{ roleLabel(session.role) }}</span>
+        <button class="link-button" @click="logout">Выход</button>
       </div>
-    </section>
-
-    <!-- DASHBOARD PAGE -->
-    <section v-if="currentPage === 'dashboard'">
-      <h2>Dashboard</h2>
-      <p>Главный экран после входа.</p>
-
-      <div class="cards">
-        <div class="card">
-          <h3>Create and Take Exam</h3>
-          <p>Создание, запуск, прохождение и завершение экзамена.</p>
-          <button @click="showPage('exam')">Open Exam</button>
-        </div>
-
-        <div class="card">
-          <h3>Violation Detected</h3>
-          <p>Фиксация нарушения студента во время экзамена.</p>
-          <button @click="showPage('violations')">Open Violations</button>
-        </div>
-
-        <div class="card">
-          <h3>Conduct Secret Voting</h3>
-          <p>Отправка анонимного голоса и просмотр результатов.</p>
-          <button @click="showPage('voting')">Open Voting</button>
-        </div>
+      <div v-else class="topbar-user">
+        <span>Вход</span>
       </div>
-    </section>
+    </header>
 
-    <!-- EXAM PAGE -->
-    <section v-if="currentPage === 'exam'">
-      <h2>Create and Take Exam</h2>
+    <main v-if="!session.token" class="login-page">
+      <section class="login-panel">
+        <h1>Вход в систему</h1>
+        <form class="form-stack" @submit.prevent="login">
+          <label>
+            <span>Логин</span>
+            <input v-model.trim="loginForm.username" autocomplete="username" placeholder="student, curator, examiner, admin" />
+          </label>
+          <label>
+            <span>Пароль</span>
+            <input v-model="loginForm.password" type="password" autocomplete="current-password" placeholder="1234" />
+          </label>
+          <div class="inline-row split">
+            <label class="check-row">
+              <input v-model="rememberMe" type="checkbox" />
+              <span>Запомнить меня</span>
+            </label>
+            <span class="muted">demo: 1234</span>
+          </div>
+          <button class="primary wide" type="submit" :disabled="loading">Войти</button>
+          <p v-if="message.text" :class="['message', message.kind]">{{ message.text }}</p>
+        </form>
+      </section>
+    </main>
 
-      <h3>Создать экзамен</h3>
-      <input v-model="examTitle" placeholder="Название экзамена" />
-      <button @click="createExam">Создать экзамен</button>
+    <div v-else class="workspace">
+      <aside class="sidebar">
+        <button
+          v-for="item in currentMenu"
+          :key="item.page"
+          :class="{ active: currentPage === item.page }"
+          @click="openPage(item.page)"
+        >
+          {{ item.label }}
+        </button>
 
-      <h3>Управление экзаменом</h3>
-      <input v-model.number="sessionId" type="number" placeholder="Введите ID созданного экзамена" />
-      <button @click="getExam">Открыть экзамен по ID</button>
-      <button @click="startExam">Запустить экзамен</button>
-      <button @click="endExam">Завершить экзамен</button>
+        <section class="system-card">
+          <strong>Информация о системе</strong>
+          <span>Классов: {{ classes.length }}</span>
+          <span>Пользователей: {{ users.length }}</span>
+          <span>Экзаменов: {{ exams.length }}</span>
+          <span class="score">S: {{ totalSPoints }}</span>
+        </section>
+      </aside>
 
-      <h3>Ответ студента</h3>
-      <input v-model.number="answerSessionId" type="number" placeholder="ID экзамена" />
-      <input v-model.number="answerUserId" type="number" placeholder="ID студента" />
-      <input v-model.number="questionId" type="number" placeholder="ID вопроса, например 1" />
-      <textarea v-model="answerText" placeholder="Ответ студента"></textarea>
-      <button @click="sendAnswer">Отправить ответ</button>
-      <button @click="getAnswers">Показать ответы</button>
-    </section>
-
-    <!-- VIOLATIONS PAGE -->
-    <section v-if="currentPage === 'violations'">
-      <h2>Violation Detected</h2>
-
-      <input v-model.number="violationSessionId" type="number" placeholder="ID экзамена" />
-      <input v-model.number="violationUserId" type="number" placeholder="ID студента" />
-      <textarea v-model="violationDescription" placeholder="Описание нарушения"></textarea>
-      <input v-model="evidencePath" placeholder="Путь к доказательству, например screenshot.png" />
-
-      <button @click="reportViolation">Зафиксировать нарушение</button>
-      <button @click="getViolations">Показать нарушения</button>
-
-      <div class="hint">
-      </div>
-    </section>
-
-    <!-- VOTING PAGE -->
-    <section v-if="currentPage === 'voting'">
-      <h2>Conduct Secret Voting</h2>
-      <p>
-        Тайное голосование: отправка голоса, запрет повторного голосования
-        и просмотр результатов.
-      </p>
-
-      <input v-model.number="voteSessionId" type="number" placeholder="ID голосования/сессии" />
-      <input v-model="encryptedValue" placeholder="Голос, например EXCLUDE или KEEP" />
-
-      <button @click="sendVote">Отправить голос</button>
-      <button @click="getVoteResults">Показать результаты</button>
-    </section>
-
-    <!-- PLANNED FEATURES PAGE -->
-    <section v-if="currentPage === 'planned'">
-      <h2>Planned Features</h2>
-
-      <div class="cards">
-        <div class="card">
-          <h3>S-points</h3>
-          <p>Система очков студентов.</p>
-          <button @click="showStub('S-points')">Open</button>
+      <section class="content">
+        <div class="page-head">
+          <div>
+            <h1>{{ pageTitle }}</h1>
+            <p>{{ pageSubtitle }}</p>
+          </div>
+          <button class="secondary" @click="refreshCurrent">Обновить</button>
         </div>
 
-        <div class="card">
-          <h3>Class Rating</h3>
-          <p>Рейтинг классов по результатам экзаменов.</p>
-          <button @click="showStub('Class Rating')">Open</button>
-        </div>
+        <section v-if="currentPage === 'home'" class="grid three">
+          <article class="metric">
+            <span>Пользователи</span>
+            <strong>{{ users.length }}</strong>
+          </article>
+          <article class="metric">
+            <span>Активные экзамены</span>
+            <strong>{{ activeExams.length }}</strong>
+          </article>
+          <article class="metric">
+            <span>Голосования</span>
+            <strong>{{ votings.length }}</strong>
+          </article>
+        </section>
 
-        <div class="card">
-          <h3>Privilege Requests</h3>
-          <p>Заявки на привилегии.</p>
-          <button @click="showStub('Privilege Requests')">Open</button>
-        </div>
+        <section v-if="currentPage === 'users'" class="stack">
+          <div class="panel">
+            <h2>Создание нового пользователя</h2>
+            <form class="two-column-form" @submit.prevent="registerUser">
+              <label>
+                <span>ФИО</span>
+                <input v-model.trim="registerForm.fullName" placeholder="Введите ФИО полностью" required />
+              </label>
+              <label>
+                <span>Email</span>
+                <input v-model.trim="registerForm.email" type="email" placeholder="Введите email" required />
+              </label>
+              <label>
+                <span>Роль</span>
+                <select v-model="registerForm.role">
+                  <option value="STUDENT">Ученик</option>
+                  <option value="EXAMINER">Экзаменатор-модератор</option>
+                  <option value="CURATOR">Куратор класса</option>
+                  <option value="ADMIN">Администратор</option>
+                </select>
+              </label>
+              <label>
+                <span>Логин</span>
+                <input v-model.trim="registerForm.username" placeholder="Введите логин" required />
+              </label>
+              <label>
+                <span>Класс</span>
+                <select v-model.number="registerForm.classId" :disabled="registerForm.role !== 'STUDENT'">
+                  <option :value="null">Выберите класс</option>
+                  <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
+                    {{ schoolClass.name }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>Пароль</span>
+                <input v-model="registerForm.password" placeholder="Введите пароль" required />
+              </label>
+              <label>
+                <span>Дата рождения</span>
+                <input v-model="registerForm.birthDate" type="date" />
+              </label>
+              <label>
+                <span>Контакты</span>
+                <input v-model.trim="registerForm.contactInfo" placeholder="Телефон или email" />
+              </label>
+              <label>
+                <span>Паспортные данные</span>
+                <input v-model.trim="registerForm.passportData" placeholder="Серия и номер" />
+              </label>
+              <label>
+                <span>Вступительный балл</span>
+                <input v-model.number="registerForm.entranceExamScore" type="number" min="0" :disabled="registerForm.role !== 'STUDENT'" />
+              </label>
+              <div class="actions">
+                <button class="primary" type="submit" :disabled="loading">Создать пользователя</button>
+                <button class="secondary" type="button" @click="resetRegisterForm">Отмена</button>
+              </div>
+            </form>
+          </div>
 
-        <div class="card">
-          <h3>Student Expulsion</h3>
-          <p>Исключение студента.</p>
-          <button @click="showStub('Student Expulsion')">Open</button>
-        </div>
+          <div class="panel">
+            <h2>Список пользователей</h2>
+            <div class="tabs">
+              <button
+                v-for="filter in userFilters"
+                :key="filter.value"
+                :class="{ active: userRoleFilter === filter.value }"
+                @click="userRoleFilter = filter.value"
+              >
+                {{ filter.label }}
+              </button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Роль</th>
+                  <th>Класс</th>
+                  <th>Логин</th>
+                  <th>Email</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="user in filteredUsers" :key="user.id">
+                  <td>{{ user.fullName }}</td>
+                  <td>{{ roleLabel(user.role) }}</td>
+                  <td>{{ user.className || '-' }}</td>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.email }}</td>
+                  <td><span class="status ok"></span>{{ user.active ? 'Активен' : 'Отключен' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-        <div class="card">
-          <h3>Rank Update</h3>
-          <p>Обновление рангов студентов.</p>
-          <button @click="showStub('Rank Update')">Open</button>
-        </div>
-      </div>
-    </section>
+        <section v-if="currentPage === 'exams'" class="stack">
+          <div v-if="session.role === 'EXAMINER'" class="panel">
+            <h2>Создание экзамена</h2>
+            <form class="two-column-form" @submit.prevent="createExam">
+              <label>
+                <span>Название</span>
+                <input v-model.trim="examForm.title" placeholder="Например: Математика" required />
+              </label>
+              <label>
+                <span>Предмет</span>
+                <input v-model.trim="examForm.subject" placeholder="Предмет" required />
+              </label>
+              <label>
+                <span>Класс</span>
+                <select v-model.number="examForm.classId" required>
+                  <option :value="null">Выберите класс</option>
+                  <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
+                    {{ schoolClass.name }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>Длительность, мин</span>
+                <input v-model.number="examForm.durationMinutes" type="number" min="1" />
+              </label>
+              <label class="full">
+                <span>Описание</span>
+                <textarea v-model.trim="examForm.description" placeholder="Краткое описание экзамена"></textarea>
+              </label>
+              <label class="full">
+                <span>Вопросы</span>
+                <textarea v-model="examQuestionsText" placeholder="Один вопрос на строку"></textarea>
+              </label>
+              <div class="actions">
+                <button class="primary" type="submit" :disabled="loading">Создать экзамен</button>
+              </div>
+            </form>
+          </div>
 
-    <!-- ADMIN / DEBUG PAGE -->
-    <section v-if="currentPage === 'admin'">
-      <h2>Admin / Debug</h2>
+          <div class="panel">
+            <h2>{{ session.role === 'STUDENT' ? 'Доступные экзамены' : 'Экзамены' }}</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Название</th>
+                  <th>Класс</th>
+                  <th>Статус</th>
+                  <th>Вопросы</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="exam in visibleExams" :key="exam.id">
+                  <td>{{ exam.title }}</td>
+                  <td>{{ exam.schoolClass?.name || '-' }}</td>
+                  <td><span :class="['badge', exam.status.toLowerCase()]">{{ statusLabel(exam.status) }}</span></td>
+                  <td>{{ exam.totalQuestions || 0 }}</td>
+                  <td class="table-actions">
+                    <button class="secondary compact" @click="openExam(exam.id)">Открыть</button>
+                    <button v-if="session.role === 'EXAMINER' && exam.status === 'PREPARED'" class="primary compact" @click="startExam(exam.id)">Запустить</button>
+                    <button v-if="session.role === 'EXAMINER' && exam.status === 'ACTIVE'" class="danger compact" @click="finishExam(exam.id)">Завершить</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      <h3>Создать пользователя</h3>
-      <input v-model="newUsername" placeholder="username, например Ayanokoji" />
-      <input v-model="newPassword" placeholder="password, например 1234" />
-      <select v-model="newRole">
-        <option value="STUDENT">STUDENT</option>
-        <option value="EXAMINER">EXAMINER</option>
-        <option value="CURATOR">CURATOR</option>
-        <option value="ADMIN">ADMIN</option>
-      </select>
+          <div v-if="selectedExam" class="panel">
+            <div class="inline-row split">
+              <h2>{{ selectedExam.exam.title }}</h2>
+              <span :class="['badge', selectedExam.exam.status.toLowerCase()]">{{ statusLabel(selectedExam.exam.status) }}</span>
+            </div>
 
-      <button @click="createUser">Создать пользователя</button>
-      <button @click="getUsers">Показать пользователей</button>
+            <div v-if="session.role === 'EXAMINER'" class="grid two">
+              <section>
+                <h3>Мониторинг</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Событие</th>
+                      <th>Время</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="event in realtimeEvents" :key="event.id">
+                      <td>{{ event.type }}</td>
+                      <td>{{ event.time }}</td>
+                    </tr>
+                    <tr v-if="!realtimeEvents.length">
+                      <td colspan="2">Событий пока нет</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <button class="secondary" @click="connectExamSocket(selectedExam.exam.id)">Подключить WebSocket</button>
+              </section>
 
-      <h3>Role test</h3>
-      <button @click="testStudent">Test student endpoint</button>
-      <button @click="testExaminer">Test examiner endpoint</button>
-      <button @click="testAdmin">Test admin endpoint</button>
-      <p>{{ roleTestResult }}</p>
-    </section>
+              <section>
+                <h3>Итоговые баллы</h3>
+                <div class="score-list">
+                  <label v-for="student in classStudentsForSelectedExam" :key="student.id">
+                    <span>{{ student.fullName }}</span>
+                    <input v-model.number="gradeForm[student.id]" type="number" min="0" />
+                  </label>
+                </div>
+                <button class="primary" :disabled="selectedExam.exam.status !== 'FINISHED'" @click="gradeExam">Сохранить баллы</button>
+              </section>
+            </div>
 
-    <!-- RESULT -->
-    <section>
-      <h2>Ответ сервера</h2>
-      <pre>{{ formattedResult }}</pre>
-    </section>
-  </main>
+            <div v-if="session.role === 'STUDENT'" class="student-exam">
+              <div v-if="selectedExam.exam.status !== 'ACTIVE'" class="empty-state">Экзамен пока недоступен для прохождения.</div>
+              <form v-else class="question-list" @submit.prevent="submitAllAnswers">
+                <label v-for="question in selectedExam.questions" :key="question.id">
+                  <span>{{ question.orderIndex }}. {{ question.text }}</span>
+                  <textarea v-model="answerDrafts[question.id]" placeholder="Введите ответ"></textarea>
+                </label>
+                <button class="primary" type="submit">Сохранить ответы</button>
+              </form>
+            </div>
+
+            <div class="results-block">
+              <h3>Результаты</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ученик</th>
+                    <th>Баллы</th>
+                    <th>Место</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="result in selectedExam.results" :key="result.id">
+                    <td>{{ result.student?.fullName || result.student?.username || result.student?.id }}</td>
+                    <td>{{ result.finalScore }}</td>
+                    <td>{{ result.rankPlace || '-' }}</td>
+                  </tr>
+                  <tr v-if="!selectedExam.results.length">
+                    <td colspan="3">Результаты еще не выставлены</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="currentPage === 'votings'" class="stack">
+          <div v-if="session.role === 'CURATOR'" class="panel">
+            <h2>Создание тайного голосования</h2>
+            <form class="two-column-form" @submit.prevent="createVoting">
+              <label>
+                <span>Название</span>
+                <input v-model.trim="votingForm.title" placeholder="Тема голосования" required />
+              </label>
+              <label>
+                <span>Класс</span>
+                <select v-model.number="votingForm.classId" required>
+                  <option :value="null">Выберите класс</option>
+                  <option v-for="schoolClass in classes" :key="schoolClass.id" :value="schoolClass.id">
+                    {{ schoolClass.name }}
+                  </option>
+                </select>
+              </label>
+              <label class="full">
+                <span>Описание</span>
+                <textarea v-model.trim="votingForm.description"></textarea>
+              </label>
+              <label class="full">
+                <span>Варианты</span>
+                <textarea v-model="votingOptionsText" placeholder="Один вариант на строку"></textarea>
+              </label>
+              <div class="actions">
+                <button class="primary" type="submit">Создать голосование</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h2>Голосования</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Название</th>
+                  <th>Класс</th>
+                  <th>Статус</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="voting in visibleVotings" :key="voting.id">
+                  <td>{{ voting.title }}</td>
+                  <td>{{ voting.schoolClass?.name || '-' }}</td>
+                  <td><span :class="['badge', voting.status.toLowerCase()]">{{ voting.status === 'ACTIVE' ? 'Активно' : 'Завершено' }}</span></td>
+                  <td class="table-actions">
+                    <button class="secondary compact" @click="openVoting(voting.id)">Открыть</button>
+                    <button v-if="session.role === 'CURATOR' && voting.status === 'ACTIVE'" class="danger compact" @click="finishVoting(voting.id)">Завершить</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="selectedVoting" class="panel">
+            <h2>{{ selectedVoting.voting.title }}</h2>
+            <p>{{ selectedVoting.voting.description }}</p>
+            <div v-if="session.role === 'STUDENT' && selectedVoting.voting.status === 'ACTIVE'" class="option-list">
+              <button
+                v-for="option in selectedVoting.options"
+                :key="option.id"
+                class="option-button"
+                @click="submitVote(option.id)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <h3>Итоги</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Вариант</th>
+                  <th>Голоса</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(count, label) in selectedVoting.results" :key="label">
+                  <td>{{ label }}</td>
+                  <td>{{ count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section v-if="currentPage === 'results'" class="panel">
+          <h2>Мои результаты</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Экзамен</th>
+                <th>Баллы</th>
+                <th>Место</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="result in myResults" :key="result.id">
+                <td>{{ result.session?.title || result.session?.id }}</td>
+                <td>{{ result.finalScore }}</td>
+                <td>{{ result.rankPlace || '-' }}</td>
+              </tr>
+              <tr v-if="!myResults.length">
+                <td colspan="3">Результатов пока нет</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section v-if="currentPage === 'classes'" class="panel">
+          <h2>Классы и рейтинг</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Класс</th>
+                <th>Ранг</th>
+                <th>S-очки</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="schoolClass in classes" :key="schoolClass.id">
+                <td>{{ schoolClass.name }}</td>
+                <td>{{ schoolClass.rank }}</td>
+                <td>{{ schoolClass.sPoints }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section v-if="isStubPage" class="panel empty-state">
+          Функционал будет реализован на следующих итерациях
+        </section>
+
+        <p v-if="message.text && session.token" :class="['message', message.kind]">{{ message.text }}</p>
+      </section>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
+import { computed, onMounted, reactive, ref } from 'vue'
 
-const API_URL = 'http://localhost:8080'
+const API_URL = 'http://localhost:8081'
+const WS_URL = `${API_URL}/ws`
 
+type Role = 'STUDENT' | 'CURATOR' | 'EXAMINER' | 'ADMIN'
+type ExamStatus = 'PREPARED' | 'ACTIVE' | 'FINISHED'
+type VotingStatus = 'ACTIVE' | 'FINISHED'
 type Page =
-  | 'login'
-  | 'dashboard'
-  | 'exam'
+  | 'home'
+  | 'classes'
+  | 'users'
+  | 'exams'
+  | 'votings'
   | 'violations'
-  | 'voting'
-  | 'planned'
-  | 'admin'
-
-type Role = 'STUDENT' | 'EXAMINER' | 'CURATOR' | 'ADMIN'
+  | 'privileges'
+  | 'settings'
+  | 'my-class'
+  | 'results'
+  | 'profile'
+  | 'ratings'
 
 interface LoginResponse {
   token: string
   role: Role
+  accountId: number
+  userId: number | null
+  displayName: string
 }
 
-interface ServerResult {
-  status?: number
-  ok?: boolean
-  data?: unknown
-  message?: string
-  error?: boolean
-  feature?: string
-  username?: string
-  role?: Role
+interface SchoolClass {
+  id: number
+  name: string
+  rank: string
+  sPoints: number
 }
 
-const currentPage = ref<Page>('login')
-const result = ref<ServerResult | Record<string, unknown>>({
-  message: 'Здесь появится ответ backend...'
+interface UserResponse {
+  id: number
+  accountId: number
+  fullName: string
+  username: string
+  email: string
+  role: Role
+  className?: string
+  active: boolean
+}
+
+interface ExamSession {
+  id: number
+  title: string
+  subject: string
+  status: ExamStatus
+  schoolClass?: SchoolClass
+  totalQuestions?: number
+}
+
+interface Question {
+  id: number
+  orderIndex: number
+  text: string
+}
+
+interface Answer {
+  id: number
+  questionId: number
+  userId: number
+  text: string
+}
+
+interface ExamResult {
+  id: number
+  session?: ExamSession
+  student?: UserResponse
+  finalScore: number
+  rankPlace?: number
+}
+
+interface ExamDetails {
+  exam: ExamSession
+  questions: Question[]
+  answers: Answer[]
+  results: ExamResult[]
+}
+
+interface SecretVoting {
+  id: number
+  title: string
+  description?: string
+  schoolClass?: SchoolClass
+  status: VotingStatus
+}
+
+interface VotingOption {
+  id: number
+  label: string
+}
+
+interface VotingDetails {
+  voting: SecretVoting
+  options: VotingOption[]
+  results: Record<string, number>
+}
+
+interface RealtimeEvent {
+  id: string
+  type: string
+  time: string
+}
+
+const session = reactive({
+  token: '',
+  role: 'STUDENT' as Role,
+  accountId: null as number | null,
+  userId: null as number | null,
+  displayName: ''
 })
 
-const loginUsername = ref('')
-const loginPassword = ref('')
-const loginStatus = ref('Not logged in')
+const loginForm = reactive({ username: 'admin', password: '1234' })
+const rememberMe = ref(true)
+const loading = ref(false)
+const currentPage = ref<Page>('home')
+const message = reactive({ text: '', kind: 'info' as 'info' | 'success' | 'error' })
 
-const newUsername = ref('')
-const newPassword = ref('')
-const newRole = ref<Role>('STUDENT')
+const users = ref<UserResponse[]>([])
+const classes = ref<SchoolClass[]>([])
+const exams = ref<ExamSession[]>([])
+const votings = ref<SecretVoting[]>([])
+const selectedExam = ref<ExamDetails | null>(null)
+const selectedVoting = ref<VotingDetails | null>(null)
+const myResults = ref<ExamResult[]>([])
+const realtimeEvents = ref<RealtimeEvent[]>([])
+const stompClient = ref<Client | null>(null)
 
-const examTitle = ref('')
-const sessionId = ref<number | null>(null)
+const userRoleFilter = ref<Role | 'ALL'>('ALL')
+const userFilters = [
+  { value: 'ALL' as const, label: 'Все пользователи' },
+  { value: 'STUDENT' as const, label: 'Ученик' },
+  { value: 'EXAMINER' as const, label: 'Экзаменатор-модератор' },
+  { value: 'CURATOR' as const, label: 'Куратор класса' },
+  { value: 'ADMIN' as const, label: 'Администратор' }
+]
 
-const answerSessionId = ref<number | null>(null)
-const answerUserId = ref<number | null>(null)
-const questionId = ref<number | null>(null)
-const answerText = ref('')
+const registerForm = reactive({
+  fullName: '',
+  username: '',
+  email: '',
+  password: '',
+  role: 'STUDENT' as Role,
+  classId: null as number | null,
+  passportData: '',
+  entranceExamScore: null as number | null,
+  contactInfo: '',
+  birthDate: ''
+})
 
-const violationSessionId = ref<number | null>(null)
-const violationUserId = ref<number | null>(null)
-const violationDescription = ref('')
-const evidencePath = ref('')
+const examForm = reactive({
+  title: '',
+  subject: '',
+  classId: null as number | null,
+  durationMinutes: 45,
+  description: ''
+})
+const examQuestionsText = ref('Вопрос 1\nВопрос 2\nВопрос 3')
+const answerDrafts = reactive<Record<number, string>>({})
+const gradeForm = reactive<Record<number, number>>({})
 
-const voteSessionId = ref<number | null>(null)
-const encryptedValue = ref('')
+const votingForm = reactive({
+  title: '',
+  description: '',
+  classId: null as number | null
+})
+const votingOptionsText = ref('За\nПротив')
 
-const roleTestResult = ref('')
-
-function showPage(page: Page) {
-  currentPage.value = page
+const menus: Record<Role, Array<{ page: Page; label: string }>> = {
+  ADMIN: [
+    { page: 'home', label: 'Главная' },
+    { page: 'classes', label: 'Классы и рейтинг' },
+    { page: 'users', label: 'Ученики' },
+    { page: 'exams', label: 'Экзамены' },
+    { page: 'votings', label: 'Голосования' },
+    { page: 'violations', label: 'Нарушения' },
+    { page: 'privileges', label: 'Заявки на привилегии' },
+    { page: 'settings', label: 'Настройки' }
+  ],
+  CURATOR: [
+    { page: 'home', label: 'Главная' },
+    { page: 'my-class', label: 'Мой класс' },
+    { page: 'violations', label: 'Нарушения' },
+    { page: 'privileges', label: 'Заявки на привилегии' },
+    { page: 'exams', label: 'Экзамены' },
+    { page: 'votings', label: 'Голосования' }
+  ],
+  STUDENT: [
+    { page: 'home', label: 'Главная' },
+    { page: 'exams', label: 'Экзамены' },
+    { page: 'votings', label: 'Голосования' },
+    { page: 'results', label: 'Мои результаты' },
+    { page: 'profile', label: 'Профиль' }
+  ],
+  EXAMINER: [
+    { page: 'home', label: 'Главная' },
+    { page: 'exams', label: 'Экзамены' },
+    { page: 'users', label: 'Ученики' },
+    { page: 'violations', label: 'Нарушения' },
+    { page: 'ratings', label: 'Рейтинги' }
+  ]
 }
 
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('token')
+const currentMenu = computed(() => menus[session.role] || menus.STUDENT)
+const activeExams = computed(() => exams.value.filter((exam) => exam.status === 'ACTIVE'))
+const totalSPoints = computed(() => classes.value.reduce((sum, item) => sum + (item.sPoints || 0), 0).toLocaleString('ru-RU'))
+const filteredUsers = computed(() => userRoleFilter.value === 'ALL' ? users.value : users.value.filter((user) => user.role === userRoleFilter.value))
+const visibleExams = computed(() => {
+  if (session.role !== 'STUDENT') return exams.value
+  const myClass = currentUser.value?.className
+  return exams.value.filter((exam) => !myClass || exam.schoolClass?.name === myClass)
+})
+const visibleVotings = computed(() => {
+  if (session.role !== 'STUDENT') return votings.value
+  const myClass = currentUser.value?.className
+  return votings.value.filter((voting) => !myClass || voting.schoolClass?.name === myClass)
+})
+const currentUser = computed(() => users.value.find((user) => user.id === session.userId))
+const classStudentsForSelectedExam = computed(() => {
+  const className = selectedExam.value?.exam.schoolClass?.name
+  return users.value.filter((user) => user.role === 'STUDENT' && (!className || user.className === className))
+})
+const isStubPage = computed(() => ['violations', 'privileges', 'settings', 'my-class', 'profile', 'ratings'].includes(currentPage.value))
+const pageTitle = computed(() => {
+  const item = currentMenu.value.find((menuItem) => menuItem.page === currentPage.value)
+  return item?.label || 'Главная'
+})
+const pageSubtitle = computed(() => {
+  if (currentPage.value === 'exams') return 'Создание, запуск, прохождение, завершение и оценивание экзаменов'
+  if (currentPage.value === 'votings') return 'Создание тайного голосования, участие студентов и подсчет итогов'
+  if (currentPage.value === 'users') return 'Создание пользователей, роли, валидация и список учетных записей'
+  return 'Функционал архитектурного прототипа'
+})
 
+function authHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`
+    Authorization: `Bearer ${session.token}`
   }
 }
 
-function getJsonHeaders(): HeadersInit {
-  return {
-    'Content-Type': 'application/json'
-  }
-}
-
-function sanitizeResponse(data: unknown): unknown {
-  const copy = JSON.parse(JSON.stringify(data))
-
-  if (copy?.data?.encryptedValue) {
-    copy.data.encryptedValue = '[hidden]'
-  }
-
-  if (copy?.encryptedValue) {
-    copy.encryptedValue = '[hidden]'
-  }
-
-  if (copy?.token) {
-    copy.token = '[hidden]'
-  }
-
-  if (copy?.data?.token) {
-    copy.data.token = '[hidden]'
-  }
-
-  return copy
-}
-
-function showResult(data: ServerResult | Record<string, unknown>) {
-  result.value = sanitizeResponse(data) as ServerResult
-}
-
-const formattedResult = computed(() => {
-  return JSON.stringify(result.value, null, 2)
-})
-
-async function request(path: string, method = 'GET', body: unknown = null) {
-  try {
-    const options: RequestInit = {
-      method,
-      headers: getAuthHeaders()
+async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      ...authHeaders(),
+      ...(options.headers || {})
     }
-
-    if (body !== null) {
-      options.body = JSON.stringify(body)
-    }
-
-    const response = await fetch(API_URL + path, options)
-    const text = await response.text()
-
-    let data: unknown
-
-    try {
-      data = text ? JSON.parse(text) : {}
-    } catch {
-      data = text
-    }
-
-    if (response.status === 401 || response.status === 403) {
-      showResult({
-        status: response.status,
-        ok: false,
-        message: 'Access denied. Сначала войдите в систему или проверьте роль пользователя.'
-      })
-      return
-    }
-
-    showResult({
-      status: response.status,
-      ok: response.ok,
-      data
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-
-    showResult({
-      error: true,
-      message
-    })
+  })
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || `HTTP ${response.status}`)
   }
+  return data as T
 }
 
-/* AUTH */
+function setMessage(text: string, kind: 'info' | 'success' | 'error' = 'info') {
+  message.text = text
+  message.kind = kind
+}
 
 async function login() {
+  loading.value = true
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: getJsonHeaders(),
-      body: JSON.stringify({
-        username: loginUsername.value,
-        password: loginPassword.value
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loginForm)
     })
+    const data = (await response.json()) as LoginResponse & { message?: string }
+    if (!response.ok) throw new Error(data.message || 'Неверный логин или пароль')
 
-    if (!response.ok) {
-      throw new Error('Login failed')
-    }
-
-    const data = (await response.json()) as LoginResponse
-
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('role', data.role)
-    localStorage.setItem('loginUsername', loginUsername.value)
-
-    loginStatus.value = `Logged in as ${loginUsername.value} (${data.role})`
-
-    showResult({
-      message: 'Login successful',
-      username: loginUsername.value,
-      role: data.role
-    })
-
-    showPage('dashboard')
-  } catch {
-    loginStatus.value = 'Login failed. Check username/password.'
-
-    showResult({
-      error: true,
-      message: 'Login failed. Check username/password.'
-    })
+    Object.assign(session, data)
+    if (rememberMe.value) localStorage.setItem('school-session', JSON.stringify(data))
+    currentPage.value = 'home'
+    await bootstrap()
+    setMessage('Вход выполнен', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка входа', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
 function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  localStorage.removeItem('loginUsername')
-
-  loginStatus.value = 'Not logged in'
-
-  showResult({
-    message: 'Logged out'
-  })
-
-  showPage('login')
+  stompClient.value?.deactivate()
+  localStorage.removeItem('school-session')
+  Object.assign(session, { token: '', role: 'STUDENT', accountId: null, userId: null, displayName: '' })
+  selectedExam.value = null
+  selectedVoting.value = null
+  currentPage.value = 'home'
 }
 
-function updateLoginStatus() {
-  const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
-  const username = localStorage.getItem('loginUsername')
+async function bootstrap() {
+  await Promise.allSettled([loadClasses(), loadUsers(), loadExams(), loadVotings(), loadMyResults()])
+}
 
-  if (token && role && username) {
-    loginStatus.value = `Logged in as ${username} (${role})`
-  } else {
-    loginStatus.value = 'Not logged in'
+async function loadClasses() {
+  classes.value = await api<SchoolClass[]>('/users/classes')
+}
+
+async function loadUsers() {
+  users.value = await api<UserResponse[]>('/users')
+}
+
+async function loadExams() {
+  exams.value = await api<ExamSession[]>('/exam/session')
+}
+
+async function loadVotings() {
+  votings.value = await api<SecretVoting[]>('/vote/secret')
+}
+
+async function loadMyResults() {
+  if (session.userId) {
+    myResults.value = await api<ExamResult[]>(`/exam/session/students/${session.userId}/results`)
   }
 }
 
-/* ROLE TEST */
-
-async function testStudent() {
-  await testRoleEndpoint('/student/test')
-}
-
-async function testExaminer() {
-  await testRoleEndpoint('/examiner/test')
-}
-
-async function testAdmin() {
-  await testRoleEndpoint('/admin/test')
-}
-
-async function testRoleEndpoint(path: string) {
+async function refreshCurrent() {
   try {
-    const response = await fetch(`${API_URL}${path}`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    })
-
-    const text = await response.text()
-
-    if (!response.ok) {
-      roleTestResult.value = `Access denied or error: ${response.status}`
-
-      showResult({
-        status: response.status,
-        ok: response.ok,
-        message: text || 'Access denied'
-      })
-
-      return
-    }
-
-    roleTestResult.value = text
-
-    showResult({
-      status: response.status,
-      ok: response.ok,
-      data: text
-    })
+    await bootstrap()
+    if (selectedExam.value) await openExam(selectedExam.value.exam.id)
+    if (selectedVoting.value) await openVoting(selectedVoting.value.voting.id)
+    setMessage('Данные обновлены', 'success')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-
-    roleTestResult.value = 'Request failed. Check backend connection.'
-
-    showResult({
-      error: true,
-      message
-    })
+    setMessage(error instanceof Error ? error.message : 'Ошибка обновления', 'error')
   }
 }
 
-/* USERS */
-
-function createUser() {
-  const body = {
-    username: newUsername.value,
-    password: newPassword.value,
-    role: newRole.value
-  }
-
-  request('/users/create', 'POST', body)
+function openPage(page: Page) {
+  currentPage.value = page
+  setMessage('', 'info')
+  if (page === 'results') loadMyResults()
 }
 
-function getUsers() {
-  request('/users', 'GET')
-}
-
-/* EXAM SESSION */
-
-function createExam() {
-  const body = {
-    title: examTitle.value,
-    active: false
-  }
-
-  request('/exam/session/create', 'POST', body)
-}
-
-function getExam() {
-  request(`/exam/session/${sessionId.value}`, 'GET')
-}
-
-function startExam() {
-  request(`/exam/session/start/${sessionId.value}`, 'POST')
-}
-
-function endExam() {
-  request(`/exam/session/end/${sessionId.value}`, 'POST')
-}
-
-/* ANSWERS */
-
-function sendAnswer() {
-  const body = {
-    sessionId: answerSessionId.value,
-    userId: answerUserId.value,
-    questionId: questionId.value,
-    text: answerText.value
-  }
-
-  request(`/exam/${answerSessionId.value}/answer?userId=${answerUserId.value}`, 'POST', body)
-}
-
-function getAnswers() {
-  request(`/exam/${answerSessionId.value}/answers`, 'GET')
-}
-
-/* VIOLATIONS */
-
-function reportViolation() {
-  const body = {
-    sessionId: violationSessionId.value,
-    userId: violationUserId.value,
-    description: violationDescription.value,
-    evidencePath: evidencePath.value
-  }
-
-  request('/violations/report', 'POST', body)
-}
-
-function getViolations() {
-  request(`/violations/session/${violationSessionId.value}`, 'GET')
-}
-
-/* VOTING */
-
-function sendVote() {
-  const body = {
-    sessionId: voteSessionId.value,
-    encryptedValue: encryptedValue.value
-  }
-
-  request(`/vote/${voteSessionId.value}`, 'POST', body)
-}
-
-function getVoteResults() {
-  request(`/vote/${voteSessionId.value}/results`, 'GET')
-}
-
-/* STUBS */
-
-function showStub(featureName: string) {
-  showResult({
-    status: 501,
-    ok: false,
-    feature: featureName,
-    message: 'Not implemented. This feature is planned for the next iteration.'
+function resetRegisterForm() {
+  Object.assign(registerForm, {
+    fullName: '',
+    username: '',
+    email: '',
+    password: '',
+    role: 'STUDENT',
+    classId: null,
+    passportData: '',
+    entranceExamScore: null,
+    contactInfo: '',
+    birthDate: ''
   })
 }
 
-/* INITIALIZATION */
+async function registerUser() {
+  loading.value = true
+  try {
+    const body = {
+      ...registerForm,
+      classId: registerForm.role === 'STUDENT' ? registerForm.classId : null,
+      entranceExamScore: registerForm.role === 'STUDENT' ? registerForm.entranceExamScore : null,
+      birthDate: registerForm.birthDate || null
+    }
+    await api<UserResponse>('/users/register', { method: 'POST', body: JSON.stringify(body) })
+    await loadUsers()
+    resetRegisterForm()
+    setMessage('Пользователь создан', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка регистрации', 'error')
+  } finally {
+    loading.value = false
+  }
+}
 
-onMounted(() => {
-  updateLoginStatus()
+async function createExam() {
+  try {
+    const questions = examQuestionsText.value
+      .split('\n')
+      .map((text) => text.trim())
+      .filter(Boolean)
+      .map((text, index) => ({
+        orderIndex: index + 1,
+        text,
+        type: 'TEXT',
+        maxScore: 1
+      }))
+    await api<ExamSession>('/exam/session', {
+      method: 'POST',
+      body: JSON.stringify({ ...examForm, questions })
+    })
+    await loadExams()
+    setMessage('Экзамен создан', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка создания экзамена', 'error')
+  }
+}
 
-  const token = localStorage.getItem('token')
+async function openExam(id: number) {
+  selectedExam.value = await api<ExamDetails>(`/exam/session/${id}/details`)
+  selectedExam.value.questions.forEach((question) => {
+    const existing = selectedExam.value?.answers.find((answer) => answer.questionId === question.id && answer.userId === session.userId)
+    answerDrafts[question.id] = existing?.text || answerDrafts[question.id] || ''
+  })
+  classStudentsForSelectedExam.value.forEach((student) => {
+    gradeForm[student.id] = gradeForm[student.id] || 0
+  })
+  if (session.role === 'EXAMINER') connectExamSocket(id)
+}
 
-  if (token) {
-    showPage('dashboard')
-  } else {
-    showPage('login')
+async function startExam(id: number) {
+  await api<ExamSession>(`/exam/session/start/${id}`, { method: 'POST' })
+  await loadExams()
+  await openExam(id)
+  setMessage('Экзамен запущен', 'success')
+}
+
+async function finishExam(id: number) {
+  await api<ExamSession>(`/exam/session/end/${id}`, { method: 'POST' })
+  await loadExams()
+  await openExam(id)
+  setMessage('Экзамен завершен', 'success')
+}
+
+async function submitAllAnswers() {
+  if (!selectedExam.value || !session.userId) return
+  for (const question of selectedExam.value.questions) {
+    const text = answerDrafts[question.id]?.trim()
+    if (!text) continue
+    await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers`, {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: session.userId,
+        questionId: question.id,
+        text,
+        finalSubmitted: true
+      })
+    })
+  }
+  await openExam(selectedExam.value.exam.id)
+  setMessage('Ответы сохранены', 'success')
+}
+
+async function gradeExam() {
+  if (!selectedExam.value) return
+  const scores = classStudentsForSelectedExam.value.map((student) => ({
+    studentId: student.id,
+    rawScore: Number(gradeForm[student.id] || 0)
+  }))
+  await api<ExamResult[]>(`/exam/session/${selectedExam.value.exam.id}/grades`, {
+    method: 'POST',
+    body: JSON.stringify({ scores })
+  })
+  await loadClasses()
+  await openExam(selectedExam.value.exam.id)
+  setMessage('Итоговые баллы сохранены', 'success')
+}
+
+function connectExamSocket(examId: number) {
+  stompClient.value?.deactivate()
+  realtimeEvents.value = []
+  const client = new Client({
+    webSocketFactory: () => new SockJS(WS_URL),
+    reconnectDelay: 3000,
+    onConnect: () => {
+      client.subscribe(`/topic/exams/${examId}`, (frame) => {
+        const payload = JSON.parse(frame.body)
+        realtimeEvents.value.unshift({
+          id: `${Date.now()}-${Math.random()}`,
+          type: payload.type,
+          time: new Date().toLocaleTimeString('ru-RU')
+        })
+      })
+    }
+  })
+  stompClient.value = client
+  client.activate()
+}
+
+async function createVoting() {
+  try {
+    const options = votingOptionsText.value
+      .split('\n')
+      .map((label) => label.trim())
+      .filter(Boolean)
+      .map((label) => ({ label }))
+    await api<SecretVoting>('/vote/secret', {
+      method: 'POST',
+      body: JSON.stringify({ ...votingForm, options })
+    })
+    await loadVotings()
+    setMessage('Голосование создано', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка создания голосования', 'error')
+  }
+}
+
+async function openVoting(id: number) {
+  selectedVoting.value = await api<VotingDetails>(`/vote/secret/${id}`)
+}
+
+async function submitVote(optionId: number) {
+  if (!selectedVoting.value || !session.userId) return
+  try {
+    await api(`/vote/secret/${selectedVoting.value.voting.id}/votes`, {
+      method: 'POST',
+      body: JSON.stringify({ studentId: session.userId, optionId })
+    })
+    await openVoting(selectedVoting.value.voting.id)
+    setMessage('Голос принят', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка голосования', 'error')
+  }
+}
+
+async function finishVoting(id: number) {
+  await api<SecretVoting>(`/vote/secret/${id}/finish`, { method: 'POST' })
+  await loadVotings()
+  await openVoting(id)
+  setMessage('Голосование завершено', 'success')
+}
+
+function roleLabel(role?: Role) {
+  return {
+    STUDENT: 'Ученик',
+    CURATOR: 'Куратор класса',
+    EXAMINER: 'Экзаменатор-модератор',
+    ADMIN: 'Администратор'
+  }[role || 'STUDENT']
+}
+
+function statusLabel(status: ExamStatus) {
+  return {
+    PREPARED: 'Подготовлен',
+    ACTIVE: 'Активен',
+    FINISHED: 'Завершен'
+  }[status]
+}
+
+onMounted(async () => {
+  const saved = localStorage.getItem('school-session')
+  if (!saved) return
+
+  try {
+    const parsed = JSON.parse(saved) as Partial<LoginResponse>
+    if (!parsed.token || !parsed.role || !menus[parsed.role]) {
+      throw new Error('Invalid saved session')
+    }
+    Object.assign(session, parsed)
+    await bootstrap()
+  } catch {
+    localStorage.removeItem('school-session')
+    Object.assign(session, { token: '', role: 'STUDENT', accountId: null, userId: null, displayName: '' })
   }
 })
 </script>
