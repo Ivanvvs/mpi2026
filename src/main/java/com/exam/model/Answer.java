@@ -1,6 +1,7 @@
 package com.exam.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "answers")
@@ -18,6 +19,12 @@ public class Answer {
 
     @Column(length = 2000)
     private String text;
+
+    private LocalDateTime savedAt = LocalDateTime.now();
+
+    private Integer score;
+
+    private boolean finalSubmitted;
 
     public Answer() {}
 
@@ -59,5 +66,29 @@ public class Answer {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public LocalDateTime getSavedAt() {
+        return savedAt;
+    }
+
+    public void setSavedAt(LocalDateTime savedAt) {
+        this.savedAt = savedAt;
+    }
+
+    public Integer getScore() {
+        return score;
+    }
+
+    public void setScore(Integer score) {
+        this.score = score;
+    }
+
+    public boolean isFinalSubmitted() {
+        return finalSubmitted;
+    }
+
+    public void setFinalSubmitted(boolean finalSubmitted) {
+        this.finalSubmitted = finalSubmitted;
     }
 }

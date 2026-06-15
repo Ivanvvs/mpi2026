@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:exam-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    database: h2
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    show-sql: false
+
+debug: false
+
+logging:
+  level:
+    root: warn
+    com.exam: info
+    org.hibernate.orm.deprecation: error
+    org.hibernate.SQL: warn
+    org.springframework: warn

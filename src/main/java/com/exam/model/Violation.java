@@ -15,9 +15,15 @@ public class Violation {
 
     private Long userId;
 
+    private String type;
+
     private String description;
 
     private String evidencePath;
+
+    private Integer pointsPenalty = 0;
+
+    private boolean affectsExpulsion;
 
     private LocalDateTime time;
 
@@ -47,6 +53,14 @@ public class Violation {
         this.userId = userId;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -61,6 +75,22 @@ public class Violation {
 
     public void setEvidencePath(String evidencePath) {
         this.evidencePath = evidencePath;
+    }
+
+    public Integer getPointsPenalty() {
+        return pointsPenalty;
+    }
+
+    public void setPointsPenalty(Integer pointsPenalty) {
+        this.pointsPenalty = pointsPenalty;
+    }
+
+    public boolean isAffectsExpulsion() {
+        return affectsExpulsion;
+    }
+
+    public void setAffectsExpulsion(boolean affectsExpulsion) {
+        this.affectsExpulsion = affectsExpulsion;
     }
 
     public LocalDateTime getTime() {

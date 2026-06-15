@@ -10,4 +10,6 @@ import java.util.List;
 public interface AnswerRepository extends JpaRepository<Answer, Long> {
 
     List<Answer> findBySessionId(Long sessionId);
+    List<Answer> findBySessionIdAndUserId(Long sessionId, Long userId);
+    boolean existsBySessionIdAndUserIdAndQuestionId(Long sessionId, Long userId, Long questionId);
 }
