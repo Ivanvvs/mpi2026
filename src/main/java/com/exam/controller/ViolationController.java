@@ -20,6 +20,11 @@ public class ViolationController {
         return violationService.reportViolation(violation);
     }
 
+    @PostMapping("/report/me")
+    public Violation reportMe(@RequestBody Violation violation) {
+        return violationService.reportCurrentUserViolation(violation);
+    }
+
     @GetMapping("/session/{sessionId}")
     public List<Violation> getBySession(@PathVariable Long sessionId) {
         return violationService.getViolationsBySession(sessionId);

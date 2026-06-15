@@ -11,4 +11,5 @@ import java.util.List;
 public interface ExamSessionRepository extends JpaRepository<ExamSession, Long> {
     List<ExamSession> findByStatus(ExamStatus status);
     List<ExamSession> findBySchoolClassId(Long classId);
+    boolean existsByTitleAndSubjectAndSchoolClassId(String title, String subject, Long classId);
 }

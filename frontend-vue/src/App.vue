@@ -276,6 +276,18 @@
                 <input v-model="registerForm.birthDate" type="date" />
               </label>
               <label>
+                <span>Паспортные данные</span>
+                <input v-model.trim="registerForm.passportData" placeholder="Серия, номер или иной идентификатор" />
+              </label>
+              <label>
+                <span>Контактные данные</span>
+                <input v-model.trim="registerForm.contactInfo" placeholder="Телефон или другой контакт" />
+              </label>
+              <label v-if="registerForm.role === 'STUDENT'">
+                <span>Вступительный балл</span>
+                <input v-model.number="registerForm.entranceExamScore" type="number" min="0" />
+              </label>
+              <label>
                 <span>Email</span>
                 <input v-model.trim="registerForm.email" type="email" placeholder="Введите email" required />
               </label>
@@ -283,21 +295,21 @@
                 <span>Логин</span>
                 <input v-model.trim="registerForm.username" placeholder="Введите логин" required />
               </label>
-              <label class="password-with-action">
+              <label v-if="!editingUserId" class="password-with-action">
                 <span>Пароль</span>
                 <input v-model="registerForm.password" placeholder="Введите пароль" required />
                 <button class="secondary compact" type="button" @click="generatePassword">Сгенерировать</button>
               </label>
-              <label>
+              <label v-if="!editingUserId">
                 <span>Подтверждение пароля</span>
                 <input v-model="confirmPassword" placeholder="Повторите пароль" required />
               </label>
               <label class="check-row full">
-                <input v-model="sendCredentials" type="checkbox" />
+                <input v-model="sendCredentials" type="checkbox" disabled />
                 <span>Отправить учетные данные пользователю на email</span>
               </label>
               <div class="actions">
-                <button class="primary" type="submit" :disabled="loading">Создать пользователя</button>
+                <button class="primary" type="submit" :disabled="loading">{{ editingUserId ? 'Сохранить изменения' : 'Создать пользователя' }}</button>
                 <button class="secondary" type="button" @click="resetRegisterForm">Отмена</button>
               </div>
             </form>
@@ -336,10 +348,10 @@
                   <td>{{ user.username }}</td>
                   <td>{{ user.email }}</td>
                   <td><span class="status ok"></span>{{ user.active ? 'Активен' : 'Отключен' }}</td>
-                  <td>-</td>
+                  <td>{{ formatDateTime(user.createdAt) }}</td>
                   <td class="table-actions">
-                    <button class="icon-button" type="button" title="Редактировать">✎</button>
-                    <button class="icon-button" type="button" title="Удалить">⌫</button>
+                    <button class="icon-button" type="button" title="Редактировать" @click="editUser(user)">✎</button>
+                    <button class="icon-button" type="button" title="Удалить" @click="deactivateUser(user)">⌫</button>
                   </td>
                 </tr>
               </tbody>
@@ -412,6 +424,16 @@
                 </tr>
               </thead>
               <tbody>
+                <tr>
+                  <td colspan="5">
+                    <div class="tabs">
+                      <button :class="{ active: examStatusFilter === 'ALL' }" type="button" @click="examStatusFilter = 'ALL'">Все</button>
+                      <button :class="{ active: examStatusFilter === 'PREPARED' }" type="button" @click="examStatusFilter = 'PREPARED'">Подготовлены</button>
+                      <button :class="{ active: examStatusFilter === 'ACTIVE' }" type="button" @click="examStatusFilter = 'ACTIVE'">Активные</button>
+                      <button :class="{ active: examStatusFilter === 'FINISHED' }" type="button" @click="examStatusFilter = 'FINISHED'">Завершенные</button>
+                    </div>
+                  </td>
+                </tr>
                 <tr v-for="exam in visibleExams" :key="exam.id">
                   <td>{{ exam.title }}</td>
                   <td>{{ exam.schoolClass?.name || '-' }}</td>
@@ -422,6 +444,9 @@
                     <button v-if="session.role === 'EXAMINER' && exam.status === 'PREPARED'" class="primary compact" @click="startExam(exam.id)">Запустить</button>
                     <button v-if="session.role === 'EXAMINER' && exam.status === 'ACTIVE'" class="danger compact" @click="finishExam(exam.id)">Завершить</button>
                   </td>
+                </tr>
+                <tr v-if="!visibleExams.length">
+                  <td colspan="5">Экзаменов по выбранному фильтру пока нет</td>
                 </tr>
               </tbody>
             </table>
@@ -476,12 +501,13 @@
               <section class="panel compact-panel">
                 <h3>Фиксация нарушения</h3>
                 <div class="violation-form">
-                  <select>
-                    <option>Выберите ученика</option>
-                    <option v-for="student in classStudentsForSelectedExam" :key="student.id">{{ student.fullName }}</option>
+                  <select v-model.number="violationForm.userId">
+                    <option :value="null">Выберите ученика</option>
+                    <option v-for="student in classStudentsForSelectedExam" :key="student.id" :value="student.id">{{ student.fullName }}</option>
                   </select>
-                  <button class="primary" type="button">Зафиксировать</button>
-                  <textarea placeholder="Описание нарушения"></textarea>
+                  <button class="primary" type="button" @click="reportViolation">Зафиксировать</button>
+                  <textarea v-model.trim="violationForm.description" placeholder="Описание нарушения"></textarea>
+                  <input v-model.number="violationForm.pointsPenalty" type="number" min="0" placeholder="Штраф, баллы" />
                 </div>
               </section>
               <section class="panel compact-panel">
@@ -512,7 +538,7 @@
                 <header class="exam-focus-head">
                   <h2>Экзамен: {{ selectedExam.exam.title }}</h2>
                   <strong>Время осталось: {{ examRemainingLabel(selectedExam.exam) }}</strong>
-                  <button class="secondary" type="button" @click="submitAllAnswers">Завершить экзамен</button>
+                  <button class="secondary" type="button" :disabled="currentExamSubmitted" @click="submitAllAnswers">Завершить экзамен</button>
                 </header>
                 <aside class="question-nav">
                   <h3>Вопросы</h3>
@@ -533,10 +559,10 @@
                   </div>
                   <label class="answer-box">
                     <span>Ваш ответ / Решение:</span>
-                    <textarea v-model="answerDrafts[currentQuestion.id]" placeholder="Введите ответ"></textarea>
+                    <textarea v-model="answerDrafts[currentQuestion.id]" :disabled="currentExamSubmitted" placeholder="Введите ответ"></textarea>
                   </label>
                   <div class="actions">
-                    <button class="primary" type="button" @click="saveCurrentAnswer">Сохранить ответ</button>
+                    <button class="primary" type="button" :disabled="currentExamSubmitted" @click="saveCurrentAnswer">Сохранить ответ</button>
                     <button class="secondary" type="button" @click="nextQuestion">Следующий вопрос →</button>
                   </div>
                 </section>
@@ -585,10 +611,10 @@
                 </label>
                 <label>
                   <span>Длительность голосования:</span>
-                  <select>
-                    <option>15 минут</option>
-                    <option>30 минут</option>
-                    <option>60 минут</option>
+                  <select v-model.number="votingDurationMinutes">
+                    <option :value="15">15 минут</option>
+                    <option :value="30">30 минут</option>
+                    <option :value="60">60 минут</option>
                   </select>
                 </label>
                 <button class="primary" type="submit">Создать голосование</button>
@@ -617,11 +643,20 @@
                 </tr>
               </thead>
               <tbody>
+                <tr>
+                  <td colspan="5">
+                    <div class="tabs">
+                      <button :class="{ active: votingStatusFilter === 'ALL' }" type="button" @click="votingStatusFilter = 'ALL'">Все</button>
+                      <button :class="{ active: votingStatusFilter === 'ACTIVE' }" type="button" @click="votingStatusFilter = 'ACTIVE'">Активные</button>
+                      <button :class="{ active: votingStatusFilter === 'FINISHED' }" type="button" @click="votingStatusFilter = 'FINISHED'">Завершенные</button>
+                    </div>
+                  </td>
+                </tr>
                 <tr v-for="voting in visibleVotings" :key="voting.id">
                   <td>{{ voting.title }}</td>
                   <td><span :class="['badge', voting.status.toLowerCase()]">{{ voting.status === 'ACTIVE' ? 'Активно' : 'Завершено' }}</span></td>
                   <td>{{ voting.schoolClass?.name || '-' }}</td>
-                  <td>{{ selectedVoting?.voting.id === voting.id ? totalVotes(selectedVoting.results) : '-' }}</td>
+                  <td>{{ selectedVoting?.voting.id === voting.id && selectedVoting.resultsVisible ? totalVotes(selectedVoting.results) : '-' }}</td>
                   <td class="table-actions">
                     <button class="secondary compact" @click="openVoting(voting.id)">Просмотр</button>
                     <button v-if="session.role === 'CURATOR' && voting.status === 'ACTIVE'" class="danger compact" @click="finishVoting(voting.id)">Завершить голосование</button>
@@ -648,11 +683,13 @@
                   <dd>{{ selectedVoting.voting.schoolClass?.name || '-' }}</dd>
                   <dt>Статус:</dt>
                   <dd>{{ selectedVoting.voting.status === 'ACTIVE' ? 'Активно' : 'Завершено' }}</dd>
+                  <dt>Время окончания:</dt>
+                  <dd>{{ formatDateTime(selectedVoting.voting.endsAt) }}</dd>
                 </dl>
               </section>
               <section class="panel voting-timer">
                 <span>До окончания голосования:</span>
-                <strong>—</strong>
+                <strong>{{ votingRemainingLabel(selectedVoting.voting) }}</strong>
                 <div class="progress-line"><span></span></div>
               </section>
             </div>
@@ -660,13 +697,13 @@
             <section class="panel candidate-panel">
               <h3>Выберите вариант</h3>
               <label v-for="option in selectedVoting.options" :key="option.id" class="candidate-row">
-                <input type="radio" name="vote-option" :value="option.id" v-model="selectedVoteOptionId" />
+                <input type="radio" name="vote-option" :value="option.id" v-model="selectedVoteOptionId" :disabled="currentVotingLocked" />
                 <span>{{ option.label }}</span>
               </label>
               <div v-if="!selectedVoting.options.length" class="empty-state">Вариантов пока нет</div>
             </section>
             <div class="actions">
-              <button class="primary" :disabled="!selectedVoteOptionId || selectedVoting.voting.status !== 'ACTIVE'" @click="submitSelectedVote">Отправить голос</button>
+              <button class="primary" :disabled="!selectedVoteOptionId || currentVotingLocked" @click="submitSelectedVote">Отправить голос</button>
               <button class="secondary" type="button">Отмена</button>
               <span class="negative">Важно! После отправки изменить голос нельзя.</span>
             </div>
@@ -685,6 +722,9 @@
                 <tr v-for="(count, label) in selectedVoting.results" :key="label">
                   <td>{{ label }}</td>
                   <td>{{ count }}</td>
+                </tr>
+                <tr v-if="!selectedVoting.resultsVisible">
+                  <td colspan="2">Результаты будут доступны после завершения голосования</td>
                 </tr>
               </tbody>
             </table>
@@ -747,7 +787,7 @@
 <script setup lang="ts">
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 
 const API_URL = 'http://localhost:8081'
 const WS_URL = `${API_URL}/ws`
@@ -791,8 +831,14 @@ interface UserResponse {
   username: string
   email: string
   role: Role
+  classId?: number | null
   className?: string
+  passportData?: string | null
+  entranceExamScore?: number | null
+  contactInfo?: string | null
+  birthDate?: string | null
   active: boolean
+  createdAt?: string | null
 }
 
 interface ExamSession {
@@ -804,6 +850,8 @@ interface ExamSession {
   totalQuestions?: number
   durationMinutes?: number
   scheduledStartTime?: string | null
+  startTime?: string | null
+  endTime?: string | null
 }
 
 interface Question {
@@ -817,6 +865,14 @@ interface Answer {
   questionId: number
   userId: number
   text: string
+  finalSubmitted?: boolean
+}
+
+interface ExamAttempt {
+  started: boolean
+  submitted: boolean
+  startedAt?: string | null
+  submittedAt?: string | null
 }
 
 interface ExamResult {
@@ -832,6 +888,8 @@ interface ExamDetails {
   questions: Question[]
   answers: Answer[]
   results: ExamResult[]
+  violations?: unknown[]
+  attempt?: ExamAttempt
 }
 
 interface SecretVoting {
@@ -840,6 +898,9 @@ interface SecretVoting {
   description?: string
   schoolClass?: SchoolClass
   status: VotingStatus
+  startedAt?: string | null
+  endsAt?: string | null
+  finishedAt?: string | null
 }
 
 interface VotingOption {
@@ -851,6 +912,8 @@ interface VotingDetails {
   voting: SecretVoting
   options: VotingOption[]
   results: Record<string, number>
+  hasVoted: boolean
+  resultsVisible: boolean
 }
 
 interface RealtimeEvent {
@@ -890,8 +953,13 @@ const realtimeEvents = ref<RealtimeEvent[]>([])
 const stompClient = ref<Client | null>(null)
 const currentQuestionIndex = ref(0)
 const selectedVoteOptionId = ref<number | null>(null)
+const now = ref(Date.now())
+const examStatusFilter = ref<ExamStatus | 'ALL'>('ALL')
+const votingStatusFilter = ref<VotingStatus | 'ALL'>('ALL')
+const reportedClientViolations = new Set<string>()
 
 const userRoleFilter = ref<Role | 'ALL'>('ALL')
+const editingUserId = ref<number | null>(null)
 const userFilters = [
   { value: 'ALL' as const, label: 'Все пользователи' },
   { value: 'STUDENT' as const, label: 'Ученик' },
@@ -916,14 +984,14 @@ const confirmPassword = ref('')
 const sendCredentials = ref(true)
 
 const examForm = reactive({
-  title: '',
-  subject: '',
+  title: 'test',
+  subject: 'test',
   classId: null as number | null,
   durationMinutes: 45,
   description: '',
   scheduledStartTime: ''
 })
-const examQuestionsText = ref('Вопрос 1\nВопрос 2\nВопрос 3')
+const examQuestionsText = ref('1 + 1')
 const answerDrafts = reactive<Record<number, string>>({})
 const gradeForm = reactive<Record<number, number>>({})
 
@@ -933,6 +1001,12 @@ const votingForm = reactive({
   classId: null as number | null
 })
 const votingOptionsText = ref('За\nПротив')
+const votingDurationMinutes = ref(15)
+const violationForm = reactive({
+  userId: null as number | null,
+  description: '',
+  pointsPenalty: 0
+})
 
 const menus: Record<Role, Array<{ page: Page; label: string }>> = {
   ADMIN: [
@@ -975,14 +1049,16 @@ const totalSPoints = computed(() => formatNumber(classes.value.reduce((sum, item
 const studentCount = computed(() => users.value.filter((user) => user.role === 'STUDENT').length)
 const filteredUsers = computed(() => userRoleFilter.value === 'ALL' ? users.value : users.value.filter((user) => user.role === userRoleFilter.value))
 const visibleExams = computed(() => {
-  if (session.role !== 'STUDENT') return exams.value
+  const filtered = examStatusFilter.value === 'ALL' ? exams.value : exams.value.filter((exam) => exam.status === examStatusFilter.value)
+  if (session.role !== 'STUDENT') return filtered
   const myClass = currentUser.value?.className
-  return exams.value.filter((exam) => !myClass || exam.schoolClass?.name === myClass)
+  return filtered.filter((exam) => !myClass || exam.schoolClass?.name === myClass)
 })
 const visibleVotings = computed(() => {
-  if (session.role !== 'STUDENT') return votings.value
+  const filtered = votingStatusFilter.value === 'ALL' ? votings.value : votings.value.filter((voting) => voting.status === votingStatusFilter.value)
+  if (session.role !== 'STUDENT') return filtered
   const myClass = currentUser.value?.className
-  return votings.value.filter((voting) => !myClass || voting.schoolClass?.name === myClass)
+  return filtered.filter((voting) => !myClass || voting.schoolClass?.name === myClass)
 })
 const currentUser = computed(() => users.value.find((user) => user.id === session.userId))
 const currentUserClass = computed(() => classes.value.find((schoolClass) => schoolClass.name === currentUser.value?.className))
@@ -1041,6 +1117,8 @@ const examinerHomeRows = computed(() => exams.value.slice(0, 6).map((exam) => ({
 })))
 const examQuestionCount = computed(() => examQuestionsText.value.split('\n').map((text) => text.trim()).filter(Boolean).length)
 const currentQuestion = computed(() => selectedExam.value?.questions[currentQuestionIndex.value] || null)
+const currentExamSubmitted = computed(() => Boolean(selectedExam.value?.attempt?.submitted))
+const currentVotingLocked = computed(() => Boolean(selectedVoting.value?.hasVoted || selectedVoting.value?.voting.status !== 'ACTIVE'))
 
 function authHeaders(): HeadersInit {
   return {
@@ -1074,6 +1152,17 @@ function formatNumber(value: number) {
   return value.toLocaleString('ru-RU')
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 function generatePassword() {
   const password = Math.random().toString(36).slice(2, 10)
   registerForm.password = password
@@ -1090,11 +1179,33 @@ function examElapsedLabel(exam: ExamSession) {
 }
 
 function examRemainingLabel(exam: ExamSession) {
-  return `${exam.durationMinutes || 0}:00`
+  if (!exam.durationMinutes) return '—'
+  const sourceStartTime = exam.startTime || exam.scheduledStartTime
+  const startTime = sourceStartTime ? new Date(sourceStartTime).getTime() : Date.now()
+  const endTime = startTime + exam.durationMinutes * 60000
+  const remainingMs = endTime - now.value
+  if (remainingMs <= 0) return '00:00'
+  const minutes = Math.floor(remainingMs / 60000)
+  const seconds = Math.floor((remainingMs % 60000) / 1000)
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
 function totalVotes(results: Record<string, number>) {
   return Object.values(results).reduce((sum, count) => sum + count, 0)
+}
+
+function toLocalDateTimeInputValue(date: Date) {
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 19)
+}
+
+function votingRemainingLabel(voting: SecretVoting) {
+  if (voting.status !== 'ACTIVE' || !voting.endsAt) return '—'
+  const remainingMs = new Date(voting.endsAt).getTime() - now.value
+  if (remainingMs <= 0) return '—'
+  const minutes = Math.floor(remainingMs / 60000)
+  const seconds = Math.floor((remainingMs % 60000) / 1000)
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 async function login() {
@@ -1130,7 +1241,26 @@ function logout() {
 }
 
 async function bootstrap() {
+  if (session.role === 'STUDENT') {
+    await Promise.allSettled([loadCurrentUser(), loadMyClass(), loadExams(), loadVotings(), loadMyResults()])
+    return
+  }
+
   await Promise.allSettled([loadClasses(), loadUsers(), loadExams(), loadVotings(), loadMyResults()])
+}
+
+async function loadCurrentUser() {
+  const user = await api<UserResponse>('/users/me')
+  users.value = [user]
+}
+
+async function loadMyClass() {
+  try {
+    const schoolClass = await api<SchoolClass>('/users/me/class')
+    classes.value = [schoolClass]
+  } catch {
+    classes.value = []
+  }
 }
 
 async function loadClasses() {
@@ -1142,11 +1272,11 @@ async function loadUsers() {
 }
 
 async function loadExams() {
-  exams.value = await api<ExamSession[]>('/exam/session')
+  exams.value = await api<ExamSession[]>(session.role === 'STUDENT' ? '/exam/session/my' : '/exam/session')
 }
 
 async function loadVotings() {
-  votings.value = await api<SecretVoting[]>('/vote/secret')
+  votings.value = await api<SecretVoting[]>(session.role === 'STUDENT' ? '/vote/secret/my' : '/vote/secret')
 }
 
 async function loadMyResults() {
@@ -1186,12 +1316,13 @@ function resetRegisterForm() {
     birthDate: ''
   })
   confirmPassword.value = ''
+  editingUserId.value = null
 }
 
 async function registerUser() {
   loading.value = true
   try {
-    if (registerForm.password !== confirmPassword.value) {
+    if (!editingUserId.value && registerForm.password !== confirmPassword.value) {
       throw new Error('Пароли не совпадают')
     }
 
@@ -1201,14 +1332,64 @@ async function registerUser() {
       entranceExamScore: registerForm.role === 'STUDENT' ? registerForm.entranceExamScore : null,
       birthDate: registerForm.birthDate || null
     }
-    await api<UserResponse>('/users/register', { method: 'POST', body: JSON.stringify(body) })
+
+    const wasEditing = editingUserId.value !== null
+    if (editingUserId.value) {
+      await api<UserResponse>(`/users/${editingUserId.value}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          fullName: body.fullName,
+          email: body.email,
+          role: body.role,
+          classId: body.classId,
+          passportData: body.passportData,
+          entranceExamScore: body.entranceExamScore,
+          contactInfo: body.contactInfo,
+          birthDate: body.birthDate,
+          active: true
+        })
+      })
+    } else {
+      await api<UserResponse>('/users/register', { method: 'POST', body: JSON.stringify(body) })
+    }
+
     await loadUsers()
     resetRegisterForm()
-    setMessage('Пользователь создан', 'success')
+    setMessage(wasEditing ? 'Пользователь обновлен' : 'Пользователь создан', 'success')
   } catch (error) {
     setMessage(error instanceof Error ? error.message : 'Ошибка регистрации', 'error')
   } finally {
     loading.value = false
+  }
+}
+
+function editUser(user: UserResponse) {
+  editingUserId.value = user.id
+  Object.assign(registerForm, {
+    fullName: user.fullName,
+    username: user.username,
+    email: user.email,
+    password: '',
+    role: user.role,
+    classId: user.classId || classes.value.find((schoolClass) => schoolClass.name === user.className)?.id || null,
+    passportData: user.passportData || '',
+    entranceExamScore: user.entranceExamScore ?? null,
+    contactInfo: user.contactInfo || '',
+    birthDate: user.birthDate || ''
+  })
+  confirmPassword.value = ''
+}
+
+async function deactivateUser(user: UserResponse) {
+  const confirmed = window.confirm(`Исключить/деактивировать пользователя "${user.fullName}"?`)
+  if (!confirmed) return
+
+  try {
+    await api<UserResponse>(`/users/${user.id}`, { method: 'DELETE' })
+    await loadUsers()
+    setMessage('Пользователь деактивирован', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка деактивации пользователя', 'error')
   }
 }
 
@@ -1226,7 +1407,11 @@ async function createExam() {
       }))
     await api<ExamSession>('/exam/session', {
       method: 'POST',
-      body: JSON.stringify({ ...examForm, questions })
+      body: JSON.stringify({
+        ...examForm,
+        scheduledStartTime: examForm.scheduledStartTime || null,
+        questions
+      })
     })
     await loadExams()
     setMessage('Экзамен создан', 'success')
@@ -1246,6 +1431,9 @@ async function openExam(id: number) {
     gradeForm[student.id] = gradeForm[student.id] || 0
   })
   if (session.role === 'EXAMINER') connectExamSocket(id)
+  if (session.role === 'STUDENT' && selectedExam.value.exam.status === 'ACTIVE' && !currentExamSubmitted.value) {
+    requestExamFullscreen()
+  }
 }
 
 async function startExam(id: number) {
@@ -1264,25 +1452,27 @@ async function finishExam(id: number) {
 
 async function submitAllAnswers() {
   if (!selectedExam.value || !session.userId) return
+  if (currentExamSubmitted.value) return
   for (const question of selectedExam.value.questions) {
     const text = answerDrafts[question.id]?.trim()
     if (!text) continue
-    await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers`, {
+    await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers/me`, {
       method: 'POST',
       body: JSON.stringify({
-        studentId: session.userId,
         questionId: question.id,
         text,
-        finalSubmitted: true
+        finalSubmitted: false
       })
     })
   }
+  await api(`/exam/session/${selectedExam.value.exam.id}/attempt/me/submit`, { method: 'POST' })
   await openExam(selectedExam.value.exam.id)
   setMessage('Ответы сохранены', 'success')
 }
 
 async function saveCurrentAnswer() {
   if (!selectedExam.value || !currentQuestion.value || !session.userId) return
+  if (currentExamSubmitted.value) return
 
   const text = answerDrafts[currentQuestion.value.id]?.trim()
   if (!text) {
@@ -1290,22 +1480,115 @@ async function saveCurrentAnswer() {
     return
   }
 
-  await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers`, {
-    method: 'POST',
-    body: JSON.stringify({
-      studentId: session.userId,
-      questionId: currentQuestion.value.id,
-      text,
-      finalSubmitted: true
-    })
-  })
+  await saveAnswer(currentQuestion.value.id, text)
   await openExam(selectedExam.value.exam.id)
   setMessage('Ответ сохранен', 'success')
+}
+
+async function saveAnswer(questionId: number, text: string) {
+  if (!selectedExam.value) return
+
+  await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers/me`, {
+    method: 'POST',
+    body: JSON.stringify({
+      questionId,
+      text,
+      finalSubmitted: false
+    })
+  })
+}
+
+async function autosaveCurrentAnswer() {
+  if (session.role !== 'STUDENT' || !selectedExam.value || selectedExam.value.exam.status !== 'ACTIVE' || currentExamSubmitted.value || !currentQuestion.value) {
+    return
+  }
+
+  const text = answerDrafts[currentQuestion.value.id]?.trim()
+  if (!text) return
+
+  try {
+    await saveAnswer(currentQuestion.value.id, text)
+  } catch {
+    // Manual save shows user-facing errors; background autosave stays quiet.
+  }
 }
 
 function nextQuestion() {
   if (!selectedExam.value?.questions.length) return
   currentQuestionIndex.value = Math.min(currentQuestionIndex.value + 1, selectedExam.value.questions.length - 1)
+}
+
+function requestExamFullscreen() {
+  if (document.fullscreenElement || !document.documentElement.requestFullscreen) return
+  document.documentElement.requestFullscreen().catch(() => {
+    reportClientExamViolation('FULLSCREEN_REQUEST_REJECTED', 'Student did not enter fullscreen mode')
+  })
+}
+
+async function reportClientExamViolation(type: string, description: string) {
+  if (session.role !== 'STUDENT' || !selectedExam.value || selectedExam.value.exam.status !== 'ACTIVE' || currentExamSubmitted.value) return
+  const key = `${selectedExam.value.exam.id}:${type}`
+  if (reportedClientViolations.has(key)) return
+  reportedClientViolations.add(key)
+
+  try {
+    await api('/violations/report/me', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: selectedExam.value.exam.id,
+        type,
+        description,
+        pointsPenalty: 0
+      })
+    })
+  } catch {
+    reportedClientViolations.delete(key)
+  }
+}
+
+function handleFullscreenChange() {
+  if (session.role === 'STUDENT' && selectedExam.value?.exam.status === 'ACTIVE' && !document.fullscreenElement) {
+    reportClientExamViolation('FULLSCREEN_EXIT', 'Student left fullscreen mode during the exam')
+  }
+}
+
+function handleWindowBlur() {
+  reportClientExamViolation('WINDOW_BLUR', 'Student switched away from the exam window')
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    reportClientExamViolation('PAGE_HIDDEN', 'Student hid the exam page')
+  }
+}
+
+async function reportViolation() {
+  if (!selectedExam.value || !violationForm.userId) {
+    setMessage('Выберите ученика для фиксации нарушения', 'error')
+    return
+  }
+
+  if (!violationForm.description.trim()) {
+    setMessage('Введите описание нарушения', 'error')
+    return
+  }
+
+  try {
+    await api('/violations/report', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: selectedExam.value.exam.id,
+        userId: violationForm.userId,
+        type: 'EXAM_RULE_VIOLATION',
+        description: violationForm.description,
+        pointsPenalty: Number(violationForm.pointsPenalty || 0)
+      })
+    })
+    Object.assign(violationForm, { userId: null, description: '', pointsPenalty: 0 })
+    setMessage('Нарушение зафиксировано', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Ошибка фиксации нарушения', 'error')
+  }
 }
 
 async function gradeExam() {
@@ -1353,7 +1636,11 @@ async function createVoting() {
       .map((label) => ({ label }))
     await api<SecretVoting>('/vote/secret', {
       method: 'POST',
-      body: JSON.stringify({ ...votingForm, options })
+      body: JSON.stringify({
+        ...votingForm,
+        endsAt: toLocalDateTimeInputValue(new Date(Date.now() + votingDurationMinutes.value * 60000)),
+        options
+      })
     })
     await loadVotings()
     setMessage('Голосование создано', 'success')
@@ -1370,9 +1657,9 @@ async function openVoting(id: number) {
 async function submitVote(optionId: number) {
   if (!selectedVoting.value || !session.userId) return
   try {
-    await api(`/vote/secret/${selectedVoting.value.voting.id}/votes`, {
+    await api(`/vote/secret/${selectedVoting.value.voting.id}/votes/me`, {
       method: 'POST',
-      body: JSON.stringify({ studentId: session.userId, optionId })
+      body: JSON.stringify({ optionId })
     })
     await openVoting(selectedVoting.value.voting.id)
     setMessage('Голос принят', 'success')
@@ -1382,7 +1669,7 @@ async function submitVote(optionId: number) {
 }
 
 async function submitSelectedVote() {
-  if (!selectedVoteOptionId.value) return
+  if (!selectedVoteOptionId.value || currentVotingLocked.value) return
   await submitVote(selectedVoteOptionId.value)
 }
 
@@ -1410,7 +1697,27 @@ function statusLabel(status: ExamStatus) {
   }[status]
 }
 
+const clockInterval = window.setInterval(() => {
+  now.value = Date.now()
+}, 1000)
+
+const autosaveInterval = window.setInterval(() => {
+  autosaveCurrentAnswer()
+}, 30000)
+
+onUnmounted(() => {
+  window.clearInterval(clockInterval)
+  window.clearInterval(autosaveInterval)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('blur', handleWindowBlur)
+})
+
 onMounted(async () => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('blur', handleWindowBlur)
+
   const saved = localStorage.getItem('school-session')
   if (!saved) return
 

@@ -3,6 +3,7 @@ package com.exam.dto;
 import com.exam.auth.Role;
 import com.exam.model.User;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class UserResponse {
@@ -13,7 +14,12 @@ public class UserResponse {
     private String username;
     private String email;
     private Role role;
+    private Long classId;
     private String className;
+    private String passportData;
+    private Integer entranceExamScore;
+    private String contactInfo;
+    private LocalDate birthDate;
     private boolean active;
     private LocalDateTime createdAt;
 
@@ -22,6 +28,10 @@ public class UserResponse {
         response.id = user.getId();
         response.fullName = user.getFullName();
         response.active = user.isActive();
+        response.passportData = user.getPassportData();
+        response.entranceExamScore = user.getEntranceExamScore();
+        response.contactInfo = user.getContactInfo();
+        response.birthDate = user.getBirthDate();
 
         if (user.getAccount() != null) {
             response.accountId = user.getAccount().getId();
@@ -32,6 +42,7 @@ public class UserResponse {
         }
 
         if (user.getSchoolClass() != null) {
+            response.classId = user.getSchoolClass().getId();
             response.className = user.getSchoolClass().getName();
         }
 
@@ -64,6 +75,26 @@ public class UserResponse {
 
     public String getClassName() {
         return className;
+    }
+
+    public Long getClassId() {
+        return classId;
+    }
+
+    public String getPassportData() {
+        return passportData;
+    }
+
+    public Integer getEntranceExamScore() {
+        return entranceExamScore;
+    }
+
+    public String getContactInfo() {
+        return contactInfo;
+    }
+
+    public LocalDate getBirthDate() {
+        return birthDate;
     }
 
     public boolean isActive() {

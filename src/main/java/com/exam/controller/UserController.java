@@ -3,6 +3,7 @@ package com.exam.controller;
 import com.exam.model.User;
 import com.exam.dto.RegisterUserRequest;
 import com.exam.dto.SchoolClassResponse;
+import com.exam.dto.UpdateUserRequest;
 import com.exam.dto.UserResponse;
 import com.exam.service.UserService;
 import jakarta.validation.Valid;
@@ -36,9 +37,32 @@ public class UserController {
                 .toList();
     }
 
+    @GetMapping("/me")
+    public UserResponse me() {
+        return UserResponse.from(userService.getCurrentUser());
+    }
+
+    @GetMapping("/me/class")
+    public SchoolClassResponse myClass() {
+        return SchoolClassResponse.from(userService.getCurrentUserClass());
+    }
+
     @GetMapping("/{id}")
     public User getById(@PathVariable Long id) {
         return userService.getUserById(id);
+    }
+
+    @PutMapping("/{id}")
+    public UserResponse update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        return UserResponse.from(userService.updateUser(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public UserResponse deactivate(@PathVariable Long id) {
+        return UserResponse.from(userService.deactivateUser(id));
     }
 
     @GetMapping("/classes")

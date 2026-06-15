@@ -5,7 +5,9 @@ import com.exam.dto.ExamDashboardResponse;
 import com.exam.dto.ExamDetailsResponse;
 import com.exam.dto.GradeExamRequest;
 import com.exam.dto.SubmitAnswerRequest;
+import com.exam.dto.SubmitOwnAnswerRequest;
 import com.exam.model.Answer;
+import com.exam.model.ExamAttempt;
 import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
 import com.exam.model.Question;
@@ -32,6 +34,11 @@ public class ExamController {
     @GetMapping
     public List<ExamSession> list() {
         return examService.getExams();
+    }
+
+    @GetMapping("/my")
+    public List<ExamSession> myExams() {
+        return examService.getExamsForCurrentUser();
     }
 
     @GetMapping("/dashboard")
@@ -86,6 +93,24 @@ public class ExamController {
                 request.getText(),
                 request.isFinalSubmitted()
         );
+    }
+
+    @PostMapping("/{id}/answers/me")
+    public Answer saveMyAnswer(
+            @PathVariable Long id,
+            @Valid @RequestBody SubmitOwnAnswerRequest request
+    ) {
+        return examService.saveCurrentUserAnswer(
+                id,
+                request.getQuestionId(),
+                request.getText(),
+                request.isFinalSubmitted()
+        );
+    }
+
+    @PostMapping("/{id}/attempt/me/submit")
+    public ExamAttempt submitMyAttempt(@PathVariable Long id) {
+        return examService.submitCurrentUserAttempt(id);
     }
 
     @GetMapping("/{id}/answers")

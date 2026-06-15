@@ -145,16 +145,34 @@ public class VotingService {
     }
 
     public SecretVoting getVoting(Long votingId) {
-        return votingRepository.findById(votingId)
+        SecretVoting voting = votingRepository.findById(votingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Voting was not found"));
+        return finishIfExpired(voting);
     }
 
     public List<SecretVoting> getVotings() {
-        return votingRepository.findAll();
+        return votingRepository.findAll().stream()
+                .map(this::finishIfExpired)
+                .toList();
+    }
+
+    public List<SecretVoting> getVotingsForCurrentUser() {
+        User user = currentDomainUser();
+        if (user.getAccount() != null && user.getAccount().getRole() == Role.STUDENT) {
+            if (user.getSchoolClass() == null) {
+                return List.of();
+            }
+            return votingRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
+                    .map(this::finishIfExpired)
+                    .toList();
+        }
+        return getVotings();
     }
 
     public List<SecretVoting> getVotingsForClass(Long classId) {
-        return votingRepository.findBySchoolClassId(classId);
+        return votingRepository.findBySchoolClassId(classId).stream()
+                .map(this::finishIfExpired)
+                .toList();
     }
 
     public List<VotingOption> getOptions(Long votingId) {
@@ -164,7 +182,24 @@ public class VotingService {
 
     public VotingDetailsResponse getDetails(Long votingId) {
         SecretVoting voting = getVoting(votingId);
-        return new VotingDetailsResponse(voting, optionRepository.findByVotingId(votingId), getResults(votingId));
+        AppUser account = currentUser();
+        boolean student = account.getRole() == Role.STUDENT;
+        boolean hasVoted = false;
+        boolean resultsVisible = !student || voting.getStatus() == VotingStatus.FINISHED;
+
+        if (student) {
+            User user = currentDomainUser();
+            validateStudentCanVoteForDetails(voting, user);
+            hasVoted = receiptRepository.existsByVotingIdAndStudentId(votingId, user.getId());
+        }
+
+        return new VotingDetailsResponse(
+                voting,
+                optionRepository.findByVotingId(votingId),
+                resultsVisible ? getResults(votingId) : Map.of(),
+                hasVoted,
+                resultsVisible
+        );
     }
 
     public Map<String, Long> getResults(Long votingId) {
@@ -195,6 +230,15 @@ public class VotingService {
         return voteRepository.save(vote);
     }
 
+    @Transactional
+    public Vote submitCurrentUserVote(Long votingId, Long optionId) {
+        User user = currentDomainUser();
+        SubmitVoteRequest request = new SubmitVoteRequest();
+        request.setStudentId(user.getId());
+        request.setOptionId(optionId);
+        return submitVote(votingId, request);
+    }
+
     public List<Vote> getLegacyResults(Long sessionId) {
         return voteRepository.findBySessionId(sessionId);
     }
@@ -218,10 +262,32 @@ public class VotingService {
         }
     }
 
+    private SecretVoting finishIfExpired(SecretVoting voting) {
+        if (voting.getStatus() == VotingStatus.ACTIVE
+                && voting.getEndsAt() != null
+                && voting.getEndsAt().isBefore(LocalDateTime.now())) {
+            voting.setStatus(VotingStatus.FINISHED);
+            voting.setFinishedAt(voting.getEndsAt());
+            return votingRepository.save(voting);
+        }
+        return voting;
+    }
+
+    @Transactional
+    public void finishExpiredVotings() {
+        votingRepository.findByStatus(VotingStatus.ACTIVE).forEach(this::finishIfExpired);
+    }
+
     private AppUser currentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return appUserRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated user was not found"));
+    }
+
+    private User currentDomainUser() {
+        AppUser account = currentUser();
+        return userRepository.findByAccountId(account.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User profile was not found"));
     }
 
     private void validateStudentCanVote(SecretVoting voting, User student) {
@@ -231,6 +297,20 @@ public class VotingService {
 
         if (student.getAccount() == null || student.getAccount().getRole() != Role.STUDENT) {
             throw new BadRequestException("Only students can vote");
+        }
+
+        if (student.getSchoolClass() == null || !voting.getSchoolClass().getId().equals(student.getSchoolClass().getId())) {
+            throw new BadRequestException("Student does not belong to voting class");
+        }
+    }
+
+    private void validateStudentCanVoteForDetails(SecretVoting voting, User student) {
+        if (!student.isActive()) {
+            throw new BadRequestException("Inactive student cannot access voting");
+        }
+
+        if (student.getAccount() == null || student.getAccount().getRole() != Role.STUDENT) {
+            throw new BadRequestException("Only students can access student voting view");
         }
 
         if (student.getSchoolClass() == null || !voting.getSchoolClass().getId().equals(student.getSchoolClass().getId())) {

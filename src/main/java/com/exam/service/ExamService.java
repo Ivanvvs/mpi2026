@@ -6,12 +6,15 @@ import com.exam.auth.Role;
 import com.exam.dto.CreateExamRequest;
 import com.exam.dto.ExamDashboardResponse;
 import com.exam.dto.ExamDetailsResponse;
+import com.exam.dto.ExamAttemptResponse;
 import com.exam.dto.GradeExamRequest;
+import com.exam.dto.QuestionResponse;
 import com.exam.dto.QuestionRequest;
 import com.exam.dto.StudentScoreRequest;
 import com.exam.exception.BadRequestException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.Answer;
+import com.exam.model.ExamAttempt;
 import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
 import com.exam.model.ExamStatus;
@@ -19,11 +22,13 @@ import com.exam.model.Question;
 import com.exam.model.SchoolClass;
 import com.exam.model.User;
 import com.exam.repository.AnswerRepository;
+import com.exam.repository.ExamAttemptRepository;
 import com.exam.repository.ExamResultRepository;
 import com.exam.repository.ExamSessionRepository;
 import com.exam.repository.QuestionRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
+import com.exam.repository.ViolationRepository;
 import com.exam.realtime.ExamRealtimePublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -40,29 +45,35 @@ public class ExamService {
     private final SchoolClassRepository classRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
+    private final ExamAttemptRepository attemptRepository;
     private final UserRepository userRepository;
     private final ExamResultRepository resultRepository;
     private final ExamRealtimePublisher realtimePublisher;
     private final AppUserRepository appUserRepository;
+    private final ViolationRepository violationRepository;
 
     public ExamService(
             ExamSessionRepository repository,
             SchoolClassRepository classRepository,
             QuestionRepository questionRepository,
             AnswerRepository answerRepository,
+            ExamAttemptRepository attemptRepository,
             UserRepository userRepository,
             ExamResultRepository resultRepository,
             ExamRealtimePublisher realtimePublisher,
-            AppUserRepository appUserRepository
+            AppUserRepository appUserRepository,
+            ViolationRepository violationRepository
     ) {
         this.repository = repository;
         this.classRepository = classRepository;
         this.questionRepository = questionRepository;
         this.answerRepository = answerRepository;
+        this.attemptRepository = attemptRepository;
         this.userRepository = userRepository;
         this.resultRepository = resultRepository;
         this.realtimePublisher = realtimePublisher;
         this.appUserRepository = appUserRepository;
+        this.violationRepository = violationRepository;
     }
 
     @Transactional
@@ -151,6 +162,10 @@ public class ExamService {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student was not found"));
         validateStudentCanTakeExam(session, student);
+        ExamAttempt attempt = getOrCreateAttempt(session, student);
+        if (attempt.isSubmitted()) {
+            throw new BadRequestException("Submitted exam attempt cannot be changed");
+        }
 
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Question was not found"));
@@ -190,11 +205,14 @@ public class ExamService {
 
             ExamResult result = resultRepository.findBySessionIdAndStudentId(sessionId, student.getId())
                     .orElseGet(ExamResult::new);
+            int violationPenalty = violationRepository.findBySessionIdAndUserId(sessionId, student.getId()).stream()
+                    .mapToInt(violation -> violation.getPointsPenalty() == null ? 0 : violation.getPointsPenalty())
+                    .sum();
             result.setSession(session);
             result.setStudent(student);
             result.setRawScore(scoreRequest.getRawScore());
-            result.setViolationPenalty(0);
-            result.setFinalScore(scoreRequest.getRawScore());
+            result.setViolationPenalty(violationPenalty);
+            result.setFinalScore(Math.max(0, scoreRequest.getRawScore() - violationPenalty));
             result.setGradedAt(LocalDateTime.now());
             resultRepository.save(result);
         }
@@ -223,8 +241,9 @@ public class ExamService {
     }
 
     public ExamSession getSession(Long id) {
-        return repository.findById(id)
+        ExamSession session = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exam was not found"));
+        return finishIfExpired(session);
     }
 
     public List<Question> getQuestions(Long sessionId) {
@@ -232,11 +251,28 @@ public class ExamService {
     }
 
     public List<ExamSession> getExams() {
-        return repository.findAll();
+        return repository.findAll().stream()
+                .map(this::finishIfExpired)
+                .toList();
+    }
+
+    public List<ExamSession> getExamsForCurrentUser() {
+        User user = currentDomainUser();
+        if (user.getAccount() != null && user.getAccount().getRole() == Role.STUDENT) {
+            if (user.getSchoolClass() == null) {
+                return List.of();
+            }
+            return repository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
+                    .map(this::finishIfExpired)
+                    .toList();
+        }
+        return getExams();
     }
 
     public List<ExamSession> getExamsForClass(Long classId) {
-        return repository.findBySchoolClassId(classId);
+        return repository.findBySchoolClassId(classId).stream()
+                .map(this::finishIfExpired)
+                .toList();
     }
 
     public List<Answer> getAnswers(Long sessionId) {
@@ -245,6 +281,34 @@ public class ExamService {
 
     public List<Answer> getStudentAnswers(Long sessionId, Long studentId) {
         return answerRepository.findBySessionIdAndUserId(sessionId, studentId);
+    }
+
+    @Transactional
+    public Answer saveCurrentUserAnswer(Long sessionId, Long questionId, String text, boolean finalSubmitted) {
+        User user = currentDomainUser();
+        return saveAnswer(sessionId, user.getId(), questionId, text, finalSubmitted);
+    }
+
+    @Transactional
+    public ExamAttempt submitCurrentUserAttempt(Long sessionId) {
+        ExamSession session = getSession(sessionId);
+        if (session.getStatus() != ExamStatus.ACTIVE) {
+            throw new BadRequestException("Only active exam attempt can be submitted");
+        }
+
+        User user = currentDomainUser();
+        validateStudentCanTakeExam(session, user);
+        ExamAttempt attempt = getOrCreateAttempt(session, user);
+        if (attempt.getSubmittedAt() == null) {
+            attempt.setSubmittedAt(LocalDateTime.now());
+            attempt = attemptRepository.save(attempt);
+            answerRepository.findBySessionIdAndUserId(sessionId, user.getId()).forEach(answer -> {
+                answer.setFinalSubmitted(true);
+                answerRepository.save(answer);
+            });
+            realtimePublisher.publish(sessionId, "ATTEMPT_SUBMITTED", "Student attempt has been submitted");
+        }
+        return attempt;
     }
 
     public List<ExamResult> getResults(Long sessionId) {
@@ -257,11 +321,42 @@ public class ExamService {
 
     public ExamDetailsResponse getDetails(Long sessionId) {
         ExamSession session = getSession(sessionId);
+        AppUser account = currentUser();
+        boolean student = account.getRole() == Role.STUDENT;
+        boolean includeFullExamData = account.getRole() == Role.EXAMINER || account.getRole() == Role.ADMIN;
+
+        User domainUser = null;
+        ExamAttemptResponse attempt = ExamAttemptResponse.empty();
+        List<Answer> answers = List.of();
+        List<ExamResult> results = List.of();
+        List<com.exam.model.Violation> violations = List.of();
+
+        if (student) {
+            domainUser = currentDomainUser();
+            validateStudentCanTakeExam(session, domainUser);
+            ExamAttempt examAttempt = getOrCreateAttempt(session, domainUser);
+            attempt = ExamAttemptResponse.from(examAttempt);
+            answers = answerRepository.findBySessionIdAndUserId(sessionId, domainUser.getId());
+            if (session.getStatus() == ExamStatus.FINISHED) {
+                results = resultRepository.findBySessionIdAndStudentId(sessionId, domainUser.getId())
+                        .map(List::of)
+                        .orElseGet(List::of);
+            }
+        } else if (includeFullExamData) {
+            answers = getAnswers(sessionId);
+            results = getResults(sessionId);
+            violations = violationRepository.findBySessionId(sessionId);
+        }
+
         return new ExamDetailsResponse(
                 session,
-                getQuestions(sessionId),
-                getAnswers(sessionId),
-                getResults(sessionId)
+                getQuestions(sessionId).stream()
+                        .map(question -> QuestionResponse.from(question, includeFullExamData))
+                        .toList(),
+                answers,
+                results,
+                violations,
+                attempt
         );
     }
 
@@ -273,6 +368,50 @@ public class ExamService {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return appUserRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated user was not found"));
+    }
+
+    private User currentDomainUser() {
+        AppUser account = currentUser();
+        return userRepository.findByAccountId(account.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User profile was not found"));
+    }
+
+    private ExamSession finishIfExpired(ExamSession session) {
+        if (session.getStatus() != ExamStatus.ACTIVE || session.getDurationMinutes() == null) {
+            return session;
+        }
+
+        LocalDateTime startedAt = session.getStartTime() == null ? session.getScheduledStartTime() : session.getStartTime();
+        if (startedAt == null) {
+            return session;
+        }
+
+        LocalDateTime endsAt = startedAt.plusMinutes(session.getDurationMinutes());
+        if (LocalDateTime.now().isBefore(endsAt)) {
+            return session;
+        }
+
+        session.setStatus(ExamStatus.FINISHED);
+        session.setEndTime(endsAt);
+        ExamSession saved = repository.save(session);
+        realtimePublisher.publish(session.getId(), "EXAM_FINISHED", "Exam has been finished by time limit");
+        return saved;
+    }
+
+    @Transactional
+    public void finishExpiredExams() {
+        repository.findByStatus(ExamStatus.ACTIVE).forEach(this::finishIfExpired);
+    }
+
+    private ExamAttempt getOrCreateAttempt(ExamSession session, User student) {
+        return attemptRepository.findBySessionIdAndStudentId(session.getId(), student.getId())
+                .orElseGet(() -> {
+                    ExamAttempt attempt = new ExamAttempt();
+                    attempt.setSession(session);
+                    attempt.setStudent(student);
+                    attempt.setStartedAt(LocalDateTime.now());
+                    return attemptRepository.save(attempt);
+                });
     }
 
     private void validateStudentCanTakeExam(ExamSession session, User student) {

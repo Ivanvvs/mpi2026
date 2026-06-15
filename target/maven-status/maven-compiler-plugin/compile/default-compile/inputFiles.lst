@@ -2,6 +2,7 @@ C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\m
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\VoteDTO.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\SecretVoting.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\StudentScoreRequest.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\service\ExpirationScheduler.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\QuestionType.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\service\AnswerService.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\auth\AppUser.java
@@ -25,6 +26,7 @@ C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\m
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\AnswerDTO.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\VotingReceipt.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\ExamDetailsResponse.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\SubmitOwnAnswerRequest.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\controller\ExamController.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\realtime\WebSocketConfig.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\SubmitVoteRequest.java
@@ -48,8 +50,10 @@ C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\m
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\service\ExamService.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\ExamStatus.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\RegisterUserRequest.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\UpdateUserRequest.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\auth\TestRoleController.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\PrivilegeRequest.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\repository\ExamAttemptRepository.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\VotingDetailsResponse.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\auth\DataInitializer.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\SubmitAnswerRequest.java
@@ -60,15 +64,19 @@ C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\m
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\auth\LoginResponse.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\auth\Role.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\controller\UserController.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\SubmitOwnVoteRequest.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\repository\UserRepository.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\Violation.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\UserDTO.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\ExamAttemptResponse.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\ExamResult.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\QuestionResponse.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\ExamApplication.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\ApiErrorResponse.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\repository\AnswerRepository.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\repository\SecretVotingRepository.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\dto\ExamDashboardResponse.java
+C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\model\ExamAttempt.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\exception\BadRequestException.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\exception\ResourceNotFoundException.java
 C:\Users\Ivanb\OneDrive\Рабочий стол\SE ITMO\2 семестр\MPI_1\mpi\src\main\java\com\exam\controller\ViolationController.java

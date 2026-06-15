@@ -1,8 +1,14 @@
 package com.exam.auth;
 
 import com.exam.model.ClassRank;
+import com.exam.model.ExamSession;
+import com.exam.model.ExamStatus;
+import com.exam.model.Question;
+import com.exam.model.QuestionType;
 import com.exam.model.SchoolClass;
 import com.exam.model.User;
+import com.exam.repository.ExamSessionRepository;
+import com.exam.repository.QuestionRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -15,17 +21,23 @@ public class DataInitializer implements CommandLineRunner {
     private final AppUserRepository userRepository;
     private final SchoolClassRepository classRepository;
     private final UserRepository domainUserRepository;
+    private final ExamSessionRepository examSessionRepository;
+    private final QuestionRepository questionRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(
             AppUserRepository userRepository,
             SchoolClassRepository classRepository,
             UserRepository domainUserRepository,
+            ExamSessionRepository examSessionRepository,
+            QuestionRepository questionRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.classRepository = classRepository;
         this.domainUserRepository = domainUserRepository;
+        this.examSessionRepository = examSessionRepository;
+        this.questionRepository = questionRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -40,8 +52,10 @@ public class DataInitializer implements CommandLineRunner {
 
         seedUser("student", "student@school.local", "Student Demo", Role.STUDENT, defaultClass);
         seedUser("curator", "curator@school.local", "Curator Demo", Role.CURATOR, defaultClass);
-        seedUser("examiner", "examiner@school.local", "Examiner Demo", Role.EXAMINER, null);
+        AppUser examiner = seedUser("examiner", "examiner@school.local", "Examiner Demo", Role.EXAMINER, null);
         seedUser("admin", "admin@school.local", "Admin Demo", Role.ADMIN, null);
+
+        seedDemoExam(defaultClass, examiner);
     }
 
     private void seedClass(String name, ClassRank rank, int sPoints) {
@@ -50,7 +64,7 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void seedUser(String username, String email, String displayName, Role role, SchoolClass schoolClass) {
+    private AppUser seedUser(String username, String email, String displayName, Role role, SchoolClass schoolClass) {
         AppUser account = userRepository.findByUsername(username)
                 .orElseGet(() -> userRepository.save(new AppUser(
                     username,
@@ -68,5 +82,37 @@ public class DataInitializer implements CommandLineRunner {
             user.setSchoolClass(role == Role.STUDENT || role == Role.CURATOR ? schoolClass : null);
             domainUserRepository.save(user);
         }
+
+        return account;
+    }
+
+    private void seedDemoExam(SchoolClass schoolClass, AppUser examiner) {
+        if (schoolClass == null || examiner == null) {
+            return;
+        }
+
+        if (examSessionRepository.existsByTitleAndSubjectAndSchoolClassId("test", "test", schoolClass.getId())) {
+            return;
+        }
+
+        ExamSession exam = new ExamSession();
+        exam.setTitle("test");
+        exam.setSubject("test");
+        exam.setSchoolClass(schoolClass);
+        exam.setCreatedBy(examiner);
+        exam.setDescription("Demo exam for the main use case");
+        exam.setDurationMinutes(30);
+        exam.setTotalQuestions(1);
+        exam.setStatus(ExamStatus.PREPARED);
+        exam = examSessionRepository.save(exam);
+
+        Question question = new Question();
+        question.setSessionId(exam.getId());
+        question.setOrderIndex(1);
+        question.setText("1 + 1");
+        question.setType(QuestionType.TEXT);
+        question.setCorrectAnswer("2");
+        question.setMaxScore(1);
+        questionRepository.save(question);
     }
 }

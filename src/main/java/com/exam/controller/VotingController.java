@@ -1,6 +1,7 @@
 package com.exam.controller;
 
 import com.exam.dto.CreateVotingRequest;
+import com.exam.dto.SubmitOwnVoteRequest;
 import com.exam.dto.SubmitVoteRequest;
 import com.exam.dto.VotingDetailsResponse;
 import com.exam.model.Vote;
@@ -48,6 +49,11 @@ public class VotingController {
         return votingService.getVotings();
     }
 
+    @GetMapping("/secret/my")
+    public List<SecretVoting> myVotings() {
+        return votingService.getVotingsForCurrentUser();
+    }
+
     @GetMapping("/secret/{votingId}")
     public VotingDetailsResponse votingDetails(@PathVariable Long votingId) {
         return votingService.getDetails(votingId);
@@ -64,6 +70,14 @@ public class VotingController {
             @Valid @RequestBody SubmitVoteRequest request
     ) {
         return votingService.submitVote(votingId, request);
+    }
+
+    @PostMapping("/secret/{votingId}/votes/me")
+    public Vote submitMySecretVote(
+            @PathVariable Long votingId,
+            @Valid @RequestBody SubmitOwnVoteRequest request
+    ) {
+        return votingService.submitCurrentUserVote(votingId, request.getOptionId());
     }
 
     @PostMapping("/secret/{votingId}/finish")
