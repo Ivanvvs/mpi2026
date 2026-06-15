@@ -12,7 +12,11 @@ public class Vote {
 
     private Long sessionId;
 
+    private Long votingId;
+
     private String encryptedValue;
+
+    private String anonymousVoterHash;
 
     public Vote() {}
 
@@ -32,11 +36,27 @@ public class Vote {
         this.sessionId = sessionId;
     }
 
+    public Long getVotingId() {
+        return votingId;
+    }
+
+    public void setVotingId(Long votingId) {
+        this.votingId = votingId;
+    }
+
     public String getEncryptedValue() {
         return encryptedValue;
     }
 
     public void setEncryptedValue(String encryptedValue) {
         this.encryptedValue = encryptedValue;
+    }
+
+    public String getAnonymousVoterHash() {
+        return anonymousVoterHash;
+    }
+
+    public void setAnonymousVoterHash(String anonymousVoterHash) {
+        this.anonymousVoterHash = anonymousVoterHash;
     }
 }

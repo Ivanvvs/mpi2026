@@ -2,10 +2,13 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/examdb
     username: ksu
-    password:
+    password: ksu
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
+
+server:
+  port: 8081
