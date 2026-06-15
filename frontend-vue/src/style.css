@@ -100,19 +100,21 @@ h3 {
 .sidebar {
   padding: 18px 12px;
   border-right: 1px solid #aeb7c5;
-  background: #f8fbff;
+  background: #f4faff;
 }
 
 .sidebar button {
   width: 100%;
   min-height: 42px;
-  margin-bottom: 8px;
-  padding: 8px 12px;
+  margin-bottom: 10px;
+  padding: 8px 18px;
   border: 1px solid transparent;
   border-radius: 2px;
   background: transparent;
   text-align: left;
   color: #000000;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .sidebar button.active {
@@ -121,35 +123,20 @@ h3 {
   color: #0058ff;
 }
 
-.system-card {
-  display: grid;
-  gap: 12px;
-  margin-top: 28px;
-  padding: 14px;
-  border: 1px solid #aeb7c5;
-  background: #ffffff;
-}
-
-.score {
-  color: #11a63a;
-  font-size: 18px;
-  font-weight: 700;
-  text-align: center;
-}
-
 .content {
-  padding: 24px;
+  padding: 28px;
 }
 
 .page-head {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 }
 
 .page-head p {
   color: #6b7280;
+  margin-bottom: 0;
 }
 
 .stack {
@@ -190,6 +177,203 @@ h3 {
 
 .metric strong {
   font-size: 28px;
+}
+
+.admin-home {
+  display: grid;
+  gap: 22px;
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.compact-metric {
+  min-height: 116px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.compact-metric span {
+  color: #000000;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.compact-metric strong {
+  font-size: 38px;
+  font-weight: 500;
+}
+
+.admin-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+  gap: 28px;
+}
+
+.admin-side {
+  display: grid;
+  gap: 18px;
+}
+
+.slim-panel {
+  padding: 18px 24px;
+}
+
+.recent-list {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 12px;
+  font-size: 18px;
+}
+
+.quick-actions {
+  display: grid;
+  gap: 10px;
+  max-width: 260px;
+}
+
+.wide-action {
+  min-width: 180px;
+  margin-top: 28px;
+}
+
+.ranking-table td,
+.ranking-table th {
+  font-size: 17px;
+}
+
+.positive {
+  color: #14a83a;
+  font-weight: 700;
+}
+
+.negative {
+  color: #eb5757;
+  font-weight: 700;
+}
+
+.warning {
+  color: #f2994a;
+  font-weight: 700;
+}
+
+.student-home {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  max-width: 1160px;
+}
+
+.student-stat-card {
+  min-height: 290px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  border: 1px solid #e2e6ed;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.student-stat-card span {
+  font-size: 22px;
+}
+
+.student-stat-card strong {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.student-icon {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.student-icon.money {
+  color: #17a444;
+  background: #dff4e5;
+}
+
+.student-icon.exams {
+  color: #1269f3;
+  background: #e6f0ff;
+}
+
+.student-icon.rank {
+  color: #f29f05;
+  background: #fff3d7;
+}
+
+.green {
+  color: #14a83a;
+}
+
+.orange {
+  color: #f29f05;
+}
+
+.curator-home {
+  display: grid;
+  gap: 22px;
+}
+
+.curator-top {
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr;
+  gap: 28px;
+}
+
+.balance-panel,
+.quick-panel {
+  min-height: 112px;
+}
+
+.balance-panel p {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.curator-grid {
+  display: grid;
+  grid-template-columns: 1.08fr 0.82fr;
+  gap: 28px;
+}
+
+.examiner-home {
+  padding: 24px;
+}
+
+.examiner-home h2 {
+  margin-bottom: 22px;
+}
+
+.outline-badge {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 4px 14px;
+  border: 1px solid #2f80ed;
+  border-radius: 3px;
+  color: #0058ff;
+  font-weight: 600;
 }
 
 .form-stack,

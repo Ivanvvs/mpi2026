@@ -3,7 +3,7 @@
     <header class="topbar">
       <div class="brand">SCHOOL SYSTEM</div>
       <div v-if="session.token" class="topbar-user">
-        <span>{{ roleLabel(session.role) }}</span>
+        <span>{{ topbarLabel }}</span>
         <button class="link-button" @click="logout">Выход</button>
       </div>
       <div v-else class="topbar-user">
@@ -47,13 +47,6 @@
           {{ item.label }}
         </button>
 
-        <section class="system-card">
-          <strong>Информация о системе</strong>
-          <span>Классов: {{ classes.length }}</span>
-          <span>Пользователей: {{ users.length }}</span>
-          <span>Экзаменов: {{ exams.length }}</span>
-          <span class="score">S: {{ totalSPoints }}</span>
-        </section>
       </aside>
 
       <section class="content">
@@ -65,19 +58,191 @@
           <button class="secondary" @click="refreshCurrent">Обновить</button>
         </div>
 
-        <section v-if="currentPage === 'home'" class="grid three">
-          <article class="metric">
-            <span>Пользователи</span>
-            <strong>{{ users.length }}</strong>
+        <section v-if="currentPage === 'home' && session.role === 'ADMIN'" class="admin-home">
+          <div class="admin-metrics">
+            <article class="metric compact-metric">
+              <span>Баланс S-очков</span>
+              <strong>{{ totalSPoints }}</strong>
+            </article>
+            <article class="metric compact-metric">
+              <span>Классов</span>
+              <strong>{{ classes.length }}</strong>
+            </article>
+            <article class="metric compact-metric">
+              <span>Учеников</span>
+              <strong>{{ studentCount }}</strong>
+            </article>
+            <article class="metric compact-metric">
+              <span>Активные экзамены</span>
+              <strong>{{ activeExams.length }}</strong>
+            </article>
+          </div>
+
+          <div class="admin-main-grid">
+            <section>
+              <h2>Рейтинг классов</h2>
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>Место</th>
+                    <th>Класс</th>
+                    <th>S-очки</th>
+                    <th>Изменение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(schoolClass, index) in rankedClasses" :key="schoolClass.name">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ schoolClass.name }}</td>
+                    <td>{{ formatNumber(schoolClass.sPoints) }}</td>
+                    <td :class="schoolClass.delta >= 0 ? 'positive' : 'negative'">
+                      {{ schoolClass.delta >= 0 ? '+' : '' }}{{ schoolClass.delta }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <button class="secondary wide-action">Обновить ранги</button>
+            </section>
+
+            <aside class="admin-side">
+              <div class="panel slim-panel">
+                <h2>Недавние действия</h2>
+                <ul class="recent-list">
+                  <li v-for="item in recentActions" :key="item">{{ item }}</li>
+                  <li v-if="!recentActions.length" class="muted">Данных пока нет</li>
+                </ul>
+              </div>
+              <div class="panel slim-panel">
+                <h2>Быстрые действия</h2>
+                <div class="quick-actions">
+                  <button class="secondary" @click="openPage('users')">+ Добавить ученика</button>
+                  <button class="secondary" @click="openPage('exams')">+ Создать экзамен</button>
+                  <button class="secondary" @click="openPage('votings')">+ Голосование</button>
+                  <button class="secondary" @click="openPage('violations')">Журнал нарушений</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section v-if="currentPage === 'home' && session.role === 'STUDENT'" class="student-home">
+          <article class="student-stat-card">
+            <div class="student-icon money">S</div>
+            <span>Баланс S-очков</span>
+            <strong class="green">{{ studentClassPoints }}</strong>
           </article>
-          <article class="metric">
-            <span>Активные экзамены</span>
-            <strong>{{ activeExams.length }}</strong>
+          <article class="student-stat-card">
+            <div class="student-icon exams">A</div>
+            <span>Пройдено экзаменов</span>
+            <strong>{{ myResults.length }}</strong>
           </article>
-          <article class="metric">
-            <span>Голосования</span>
-            <strong>{{ votings.length }}</strong>
+          <article class="student-stat-card">
+            <div class="student-icon rank">{{ studentClassRank }}</div>
+            <span>Класс</span>
+            <strong class="orange">{{ studentClassRank }}</strong>
           </article>
+        </section>
+
+        <section v-if="currentPage === 'home' && session.role === 'CURATOR'" class="curator-home">
+          <div class="curator-top">
+            <section class="panel balance-panel">
+              <h2>Класс: {{ curatorClassName }}</h2>
+              <p>Баланс S-очков: <strong class="green">{{ curatorClassPoints }}</strong></p>
+            </section>
+            <section class="panel quick-panel">
+              <h2>Быстрые действия</h2>
+              <div class="inline-actions">
+                <button class="secondary" @click="openPage('violations')">Зафиксировать нарушение</button>
+                <button class="secondary" @click="openPage('privileges')">Подать заявку на привилегию</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="curator-grid">
+            <section>
+              <h2>Журнал нарушений</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Ученик</th>
+                    <th>Описание</th>
+                    <th>Экзамен</th>
+                    <th>Баллы</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="violation in curatorViolations" :key="violation.date + violation.student">
+                    <td>{{ violation.date }}</td>
+                    <td>{{ violation.student }}</td>
+                    <td>{{ violation.description }}</td>
+                    <td>{{ violation.exam }}</td>
+                    <td class="negative">{{ violation.points }}</td>
+                  </tr>
+                  <tr v-if="!curatorViolations.length">
+                    <td colspan="5">Данных пока нет</td>
+                  </tr>
+                </tbody>
+              </table>
+              <button class="secondary wide-action" @click="openPage('violations')">Все нарушения</button>
+            </section>
+
+            <section>
+              <h2>Заявки на привилегии</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Привилегия</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="request in curatorPrivilegeRequests" :key="request.date + request.title">
+                    <td>{{ request.date }}</td>
+                    <td>{{ request.title }}</td>
+                    <td :class="request.kind">{{ request.status }}</td>
+                  </tr>
+                  <tr v-if="!curatorPrivilegeRequests.length">
+                    <td colspan="3">Данных пока нет</td>
+                  </tr>
+                </tbody>
+              </table>
+              <button class="secondary wide-action" @click="openPage('privileges')">Все заявки</button>
+            </section>
+          </div>
+        </section>
+
+        <section v-if="currentPage === 'home' && session.role === 'EXAMINER'" class="examiner-home panel">
+          <h2>Предстоящие экзамены</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Время</th>
+                <th>Экзамен</th>
+                <th>Предмет</th>
+                <th>Класс(ы)</th>
+                <th>Количество участников</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in examinerHomeRows" :key="row.id">
+                <td>{{ row.date }}</td>
+                <td>{{ row.time }}</td>
+                <td>{{ row.exam }}</td>
+                <td>{{ row.subject }}</td>
+                <td>{{ row.classes }}</td>
+                <td>{{ row.participants }}</td>
+                <td><span class="outline-badge">{{ row.status }}</span></td>
+              </tr>
+              <tr v-if="!examinerHomeRows.length">
+                <td colspan="7">Данных пока нет</td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="secondary wide-action" @click="openPage('exams')">Все экзамены</button>
         </section>
 
         <section v-if="currentPage === 'users'" class="stack">
@@ -520,6 +685,7 @@ interface ExamSession {
   status: ExamStatus
   schoolClass?: SchoolClass
   totalQuestions?: number
+  scheduledStartTime?: string | null
 }
 
 interface Question {
@@ -573,6 +739,12 @@ interface RealtimeEvent {
   id: string
   type: string
   time: string
+}
+
+interface RankedClass {
+  name: string
+  sPoints: number
+  delta: number
 }
 
 const session = reactive({
@@ -676,7 +848,8 @@ const menus: Record<Role, Array<{ page: Page; label: string }>> = {
 
 const currentMenu = computed(() => menus[session.role] || menus.STUDENT)
 const activeExams = computed(() => exams.value.filter((exam) => exam.status === 'ACTIVE'))
-const totalSPoints = computed(() => classes.value.reduce((sum, item) => sum + (item.sPoints || 0), 0).toLocaleString('ru-RU'))
+const totalSPoints = computed(() => formatNumber(classes.value.reduce((sum, item) => sum + (item.sPoints || 0), 0)))
+const studentCount = computed(() => users.value.filter((user) => user.role === 'STUDENT').length)
 const filteredUsers = computed(() => userRoleFilter.value === 'ALL' ? users.value : users.value.filter((user) => user.role === userRoleFilter.value))
 const visibleExams = computed(() => {
   if (session.role !== 'STUDENT') return exams.value
@@ -689,21 +862,60 @@ const visibleVotings = computed(() => {
   return votings.value.filter((voting) => !myClass || voting.schoolClass?.name === myClass)
 })
 const currentUser = computed(() => users.value.find((user) => user.id === session.userId))
+const currentUserClass = computed(() => classes.value.find((schoolClass) => schoolClass.name === currentUser.value?.className))
 const classStudentsForSelectedExam = computed(() => {
   const className = selectedExam.value?.exam.schoolClass?.name
   return users.value.filter((user) => user.role === 'STUDENT' && (!className || user.className === className))
 })
+const rankedClasses = computed<RankedClass[]>(() => {
+  return classes.value
+    .map((schoolClass) => ({
+      name: schoolClass.name,
+      sPoints: schoolClass.sPoints,
+      delta: 0
+    }))
+    .sort((left, right) => right.sPoints - left.sPoints)
+    .slice(0, 5)
+})
+const studentClassPoints = computed(() => currentUserClass.value ? formatNumber(currentUserClass.value.sPoints) : '-')
+const studentClassRank = computed(() => currentUserClass.value?.rank || '-')
+const curatorClassName = computed(() => currentUser.value?.className || '-')
+const curatorClassPoints = computed(() => currentUserClass.value ? formatNumber(currentUserClass.value.sPoints) : '-')
+const topbarLabel = computed(() => {
+  if (session.role === 'CURATOR') return currentUser.value?.className ? `Куратор ${currentUser.value.className}` : 'Куратор'
+  if (session.role === 'STUDENT') return 'Студент'
+  return roleLabel(session.role)
+})
 const isStubPage = computed(() => ['violations', 'privileges', 'settings', 'my-class', 'profile', 'ratings'].includes(currentPage.value))
 const pageTitle = computed(() => {
   const item = currentMenu.value.find((menuItem) => menuItem.page === currentPage.value)
+  if (currentPage.value === 'home' && session.role === 'ADMIN') return 'Сводная панель'
   return item?.label || 'Главная'
 })
 const pageSubtitle = computed(() => {
+  if (currentPage.value === 'home') return ''
   if (currentPage.value === 'exams') return 'Создание, запуск, прохождение, завершение и оценивание экзаменов'
   if (currentPage.value === 'votings') return 'Создание тайного голосования, участие студентов и подсчет итогов'
   if (currentPage.value === 'users') return 'Создание пользователей, роли, валидация и список учетных записей'
   return 'Функционал архитектурного прототипа'
 })
+
+const recentActions = computed(() => [
+  ...exams.value.slice(-3).reverse().map((exam) => `${exam.title}: ${statusLabel(exam.status).toLowerCase()}`),
+  ...votings.value.slice(-2).reverse().map((voting) => `${voting.title}: ${voting.status === 'ACTIVE' ? 'активно' : 'завершено'}`)
+].slice(0, 4))
+const curatorViolations = computed<Array<{ date: string; student: string; description: string; exam: string; points: number }>>(() => [])
+const curatorPrivilegeRequests = computed<Array<{ date: string; title: string; status: string; kind: string }>>(() => [])
+const examinerHomeRows = computed(() => exams.value.slice(0, 6).map((exam) => ({
+  id: exam.id,
+  date: exam.scheduledStartTime ? new Date(exam.scheduledStartTime).toLocaleDateString('ru-RU') : '-',
+  time: exam.scheduledStartTime ? new Date(exam.scheduledStartTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-',
+  exam: exam.title,
+  subject: exam.subject,
+  classes: exam.schoolClass?.name || '-',
+  participants: users.value.filter((user) => user.role === 'STUDENT' && (!exam.schoolClass?.name || user.className === exam.schoolClass.name)).length,
+  status: statusLabel(exam.status)
+})))
 
 function authHeaders(): HeadersInit {
   return {
@@ -731,6 +943,10 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 function setMessage(text: string, kind: 'info' | 'success' | 'error' = 'info') {
   message.text = text
   message.kind = kind
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString('ru-RU')
 }
 
 async function login() {
