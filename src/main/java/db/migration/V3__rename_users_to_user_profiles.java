@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+@SuppressWarnings("java:S101")
 public class V3__rename_users_to_user_profiles extends BaseJavaMigration {
 
     @Override

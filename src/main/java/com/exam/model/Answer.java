@@ -3,6 +3,8 @@ package com.exam.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(name = "answers")
 public class Answer {
@@ -20,13 +22,15 @@ public class Answer {
     @Column(length = 2000)
     private String text;
 
-    private LocalDateTime savedAt = LocalDateTime.now();
+    private LocalDateTime savedAt = nowUtc();
 
     private Integer score;
 
     private boolean finalSubmitted;
 
-    public Answer() {}
+    public Answer() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;

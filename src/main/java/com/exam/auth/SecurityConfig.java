@@ -20,6 +20,12 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
+    private static final String ROLE_ADMIN = "ADMIN";
+    private static final String ROLE_CURATOR = "CURATOR";
+    private static final String ROLE_EXAMINER = "EXAMINER";
+    private static final String ROLE_STUDENT = "STUDENT";
+    private static final String USERS_PATTERN = "/users/**";
+
     private final JwtAuthFilter jwtAuthFilter;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
@@ -40,38 +46,41 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.GET, "/users/me/class").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/users/register").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/users/classes").hasAnyRole("ADMIN", "CURATOR", "EXAMINER")
-                        .requestMatchers(HttpMethod.GET, "/users/**").hasAnyRole("ADMIN", "CURATOR", "EXAMINER")
+                        .requestMatchers(HttpMethod.POST, "/users/register").hasRole(ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.PUT, USERS_PATTERN).hasRole(ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, USERS_PATTERN).hasRole(ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/users/classes").hasAnyRole(ROLE_ADMIN, ROLE_CURATOR, ROLE_EXAMINER)
+                        .requestMatchers(HttpMethod.GET, USERS_PATTERN).hasAnyRole(ROLE_ADMIN, ROLE_CURATOR, ROLE_EXAMINER)
 
-                        .requestMatchers(HttpMethod.POST, "/exam/session").hasRole("EXAMINER")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/start/**").hasRole("EXAMINER")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/end/**").hasRole("EXAMINER")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/*/grades").hasRole("EXAMINER")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/*/answers/me").hasRole("STUDENT")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/*/attempt/me/submit").hasRole("STUDENT")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/*/answers").hasAnyRole("EXAMINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/my").hasAnyRole("STUDENT", "EXAMINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/*/monitor").hasAnyRole("EXAMINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/*/questions").hasAnyRole("EXAMINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/*/answers/**").hasAnyRole("EXAMINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/*/results").hasAnyRole("EXAMINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/students/*/results").hasAnyRole("STUDENT", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/exam/session/**").hasAnyRole("STUDENT", "EXAMINER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/exam/session").hasRole(ROLE_EXAMINER)
+                        .requestMatchers(HttpMethod.POST, "/exam/session/start/**").hasRole(ROLE_EXAMINER)
+                        .requestMatchers(HttpMethod.POST, "/exam/session/end/**").hasRole(ROLE_EXAMINER)
+                        .requestMatchers(HttpMethod.POST, "/exam/session/*/grades").hasRole(ROLE_EXAMINER)
+                        .requestMatchers(HttpMethod.POST, "/exam/session/*/answers/me").hasRole(ROLE_STUDENT)
+                        .requestMatchers(HttpMethod.POST, "/exam/session/*/attempt/me/submit").hasRole(ROLE_STUDENT)
+                        .requestMatchers(HttpMethod.POST, "/exam/session/*/answers").hasAnyRole(ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session").hasAnyRole(ROLE_STUDENT, ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/dashboard").hasRole(ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/my").hasAnyRole(ROLE_STUDENT, ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/*/monitor").hasAnyRole(ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/*/questions").hasAnyRole(ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/*/answers/**").hasAnyRole(ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/*/results").hasAnyRole(ROLE_EXAMINER, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/students/*/results").hasAnyRole(ROLE_STUDENT, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/exam/session/**").hasAnyRole(ROLE_STUDENT, ROLE_EXAMINER, ROLE_ADMIN)
 
-                        .requestMatchers(HttpMethod.POST, "/violations/report/me").hasRole("STUDENT")
-                        .requestMatchers(HttpMethod.POST, "/violations/report").hasAnyRole("EXAMINER", "CURATOR")
-                        .requestMatchers(HttpMethod.GET, "/violations/**").hasAnyRole("EXAMINER", "CURATOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/violations/report/me").hasRole(ROLE_STUDENT)
+                        .requestMatchers(HttpMethod.POST, "/violations/report").hasAnyRole(ROLE_EXAMINER, ROLE_CURATOR)
+                        .requestMatchers(HttpMethod.GET, "/violations/**").hasAnyRole(ROLE_EXAMINER, ROLE_CURATOR, ROLE_ADMIN)
 
-                        .requestMatchers(HttpMethod.POST, "/vote/secret").hasRole("CURATOR")
-                        .requestMatchers(HttpMethod.POST, "/vote/secret/*/finish").hasRole("CURATOR")
-                        .requestMatchers(HttpMethod.POST, "/vote/secret/*/votes/me").hasRole("STUDENT")
-                        .requestMatchers(HttpMethod.POST, "/vote/secret/*/votes").hasAnyRole("CURATOR", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/vote/secret/my").hasAnyRole("STUDENT", "CURATOR", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/vote/secret/*/results").hasAnyRole("CURATOR", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/vote/secret/**").hasAnyRole("STUDENT", "CURATOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/vote/secret").hasRole(ROLE_CURATOR)
+                        .requestMatchers(HttpMethod.POST, "/vote/secret/*/finish").hasRole(ROLE_CURATOR)
+                        .requestMatchers(HttpMethod.POST, "/vote/secret/*/votes/me").hasRole(ROLE_STUDENT)
+                        .requestMatchers(HttpMethod.POST, "/vote/secret/*/votes").hasAnyRole(ROLE_CURATOR, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/vote/secret").hasAnyRole(ROLE_STUDENT, ROLE_CURATOR, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/vote/secret/my").hasAnyRole(ROLE_STUDENT, ROLE_CURATOR, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/vote/secret/*/results").hasAnyRole(ROLE_CURATOR, ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/vote/secret/**").hasAnyRole(ROLE_STUDENT, ROLE_CURATOR, ROLE_ADMIN)
 
                         .anyRequest().authenticated()
                 )

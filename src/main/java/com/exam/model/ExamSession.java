@@ -42,7 +42,9 @@ public class ExamSession {
 
     private LocalDateTime endTime;
 
-    public ExamSession() {}
+    public ExamSession() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;

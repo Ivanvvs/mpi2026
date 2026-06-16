@@ -1,10 +1,12 @@
 package com.exam.service;
 
+import com.exam.auth.Role;
 import com.exam.dto.ExamDashboardResponse;
 import com.exam.dto.ExamSessionDTO;
 import com.exam.dto.GradeExamRequest;
 import com.exam.dto.StudentScoreRequest;
 import com.exam.exception.BadRequestException;
+import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
@@ -19,9 +21,10 @@ import com.exam.realtime.ExamRealtimePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Service
 public class ExamResultService {
@@ -32,6 +35,7 @@ public class ExamResultService {
     private final ViolationRepository violationRepository;
     private final SchoolClassRepository classRepository;
     private final ExamRealtimePublisher realtimePublisher;
+    private final CurrentUserService currentUserService;
 
     public ExamResultService(
             ExamLifecycleService examLifecycleService,
@@ -39,7 +43,8 @@ public class ExamResultService {
             ExamResultRepository resultRepository,
             ViolationRepository violationRepository,
             SchoolClassRepository classRepository,
-            ExamRealtimePublisher realtimePublisher
+            ExamRealtimePublisher realtimePublisher,
+            CurrentUserService currentUserService
     ) {
         this.examLifecycleService = examLifecycleService;
         this.userRepository = userRepository;
@@ -47,11 +52,13 @@ public class ExamResultService {
         this.violationRepository = violationRepository;
         this.classRepository = classRepository;
         this.realtimePublisher = realtimePublisher;
+        this.currentUserService = currentUserService;
     }
 
     @Transactional
     public List<ExamResult> gradeExam(Long sessionId, GradeExamRequest request) {
         ExamSession session = examLifecycleService.getSession(sessionId);
+        assertCanGrade(session);
 
         if (session.getStatus() != ExamStatus.FINISHED) {
             throw new BadRequestException("Exam must be finished before grading");
@@ -71,7 +78,7 @@ public class ExamResultService {
             result.setRawScore(scoreRequest.getRawScore());
             result.setViolationPenalty(violationPenalty);
             result.setFinalScore(Math.max(0, scoreRequest.getRawScore() - violationPenalty));
-            result.setGradedAt(LocalDateTime.now());
+            result.setGradedAt(nowUtc());
             resultRepository.save(result);
         }
 
@@ -104,6 +111,7 @@ public class ExamResultService {
     }
 
     public List<ExamResult> getStudentResults(Long studentId) {
+        assertCanViewStudentResults(studentId);
         return resultRepository.findByStudentId(studentId);
     }
 
@@ -121,5 +129,25 @@ public class ExamResultService {
         return resultRepository.findBySessionIdAndStudentId(sessionId, studentId)
                 .map(List::of)
                 .orElseGet(List::of);
+    }
+
+    private void assertCanGrade(ExamSession session) {
+        User user = currentUserService.getProfile();
+        if (user.getAccount() != null
+                && user.getAccount().getRole() == Role.EXAMINER
+                && session.getCreatedBy() != null
+                && session.getCreatedBy().getId().equals(user.getAccount().getId())) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot grade this exam");
+    }
+
+    private void assertCanViewStudentResults(Long studentId) {
+        User user = currentUserService.getProfile();
+        Role role = user.getAccount() == null ? null : user.getAccount().getRole();
+        if (role == Role.ADMIN || user.getId().equals(studentId)) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot access results for this student");
     }
 }

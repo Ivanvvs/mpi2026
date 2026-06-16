@@ -34,7 +34,7 @@ public class VotingController {
         if (classId != null) {
             return votingService.getVotingsForClass(classId).stream().map(SecretVotingResponse::from).toList();
         }
-        return votingService.getVotings().stream().map(SecretVotingResponse::from).toList();
+        return votingService.getVotingsForCurrentUser().stream().map(SecretVotingResponse::from).toList();
     }
 
     @GetMapping("/secret/my")

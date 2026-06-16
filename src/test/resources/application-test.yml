@@ -25,3 +25,6 @@ logging:
     org.hibernate.orm.deprecation: error
     org.hibernate.SQL: warn
     org.springframework: warn
+
+jwt:
+  secret: test-jwt-secret-key-for-context-loads-only-1234567890

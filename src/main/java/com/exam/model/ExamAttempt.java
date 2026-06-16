@@ -3,6 +3,8 @@ package com.exam.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(
         name = "exam_attempts",
@@ -22,7 +24,7 @@ public class ExamAttempt {
     @JoinColumn(name = "student_id")
     private User student;
 
-    private LocalDateTime startedAt = LocalDateTime.now();
+    private LocalDateTime startedAt = nowUtc();
 
     private LocalDateTime submittedAt;
 

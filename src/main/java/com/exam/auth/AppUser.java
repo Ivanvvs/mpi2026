@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(name = "app_users")
 public class AppUser {
@@ -28,9 +30,10 @@ public class AppUser {
 
     private boolean active = true;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = nowUtc();
 
     public AppUser() {
+        // Required by JPA.
     }
 
     public AppUser(String username, String password, Role role) {

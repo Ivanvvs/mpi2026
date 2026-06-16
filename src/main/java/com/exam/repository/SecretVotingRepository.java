@@ -11,4 +11,5 @@ import java.util.List;
 public interface SecretVotingRepository extends JpaRepository<SecretVoting, Long> {
     List<SecretVoting> findByStatus(VotingStatus status);
     List<SecretVoting> findBySchoolClassId(Long classId);
+    List<SecretVoting> findByCreatedById(Long accountId);
 }

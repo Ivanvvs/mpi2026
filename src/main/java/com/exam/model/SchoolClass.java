@@ -3,6 +3,8 @@ package com.exam.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(name = "school_classes")
 public class SchoolClass {
@@ -21,9 +23,10 @@ public class SchoolClass {
 
     private boolean active = true;
 
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = nowUtc();
 
     public SchoolClass() {
+        // Required by JPA.
     }
 
     public SchoolClass(String name, ClassRank rank, int sPoints) {
@@ -54,7 +57,7 @@ public class SchoolClass {
 
     public void setRank(ClassRank rank) {
         this.rank = rank;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = nowUtc();
     }
 
     public int getsPoints() {
@@ -63,7 +66,7 @@ public class SchoolClass {
 
     public void setsPoints(int sPoints) {
         this.sPoints = sPoints;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = nowUtc();
     }
 
     public boolean isActive() {
@@ -72,7 +75,7 @@ public class SchoolClass {
 
     public void setActive(boolean active) {
         this.active = active;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = nowUtc();
     }
 
     public LocalDateTime getUpdatedAt() {

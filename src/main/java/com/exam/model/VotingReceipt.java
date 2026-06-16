@@ -3,6 +3,8 @@ package com.exam.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(
         name = "voting_receipts",
@@ -22,7 +24,7 @@ public class VotingReceipt {
     @JoinColumn(name = "student_id")
     private User student;
 
-    private LocalDateTime votedAt = LocalDateTime.now();
+    private LocalDateTime votedAt = nowUtc();
 
     public Long getId() {
         return id;

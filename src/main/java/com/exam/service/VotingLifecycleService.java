@@ -4,6 +4,7 @@ import com.exam.auth.Role;
 import com.exam.dto.CreateVotingRequest;
 import com.exam.dto.VotingOptionRequest;
 import com.exam.exception.BadRequestException;
+import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.SchoolClass;
 import com.exam.model.SecretVoting;
@@ -16,8 +17,9 @@ import com.exam.repository.VotingOptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Service
 public class VotingLifecycleService {
@@ -71,14 +73,16 @@ public class VotingLifecycleService {
     @Transactional
     public SecretVoting finishVoting(Long votingId) {
         SecretVoting voting = getVoting(votingId);
+        assertCanManageVoting(voting);
         voting.setStatus(VotingStatus.FINISHED);
-        voting.setFinishedAt(LocalDateTime.now());
+        voting.setFinishedAt(nowUtc());
         return votingRepository.save(voting);
     }
 
     public SecretVoting getVoting(Long votingId) {
         SecretVoting voting = votingRepository.findById(votingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Voting was not found"));
+        assertCanViewVoting(voting);
         return finishIfExpired(voting);
     }
 
@@ -90,18 +94,30 @@ public class VotingLifecycleService {
 
     public List<SecretVoting> getVotingsForCurrentUser() {
         User user = currentUserService.getProfile();
-        if (user.getAccount() != null && user.getAccount().getRole() == Role.STUDENT) {
-            if (user.getSchoolClass() == null) {
-                return List.of();
-            }
+        Role role = getRole(user);
+        if (role == Role.ADMIN) {
+            return getVotings();
+        }
+        if (role == Role.CURATOR && user.getSchoolClass() != null) {
             return votingRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
                     .map(this::finishIfExpired)
                     .toList();
         }
-        return getVotings();
+        if (role == Role.CURATOR && user.getAccount() != null) {
+            return votingRepository.findByCreatedById(user.getAccount().getId()).stream()
+                    .map(this::finishIfExpired)
+                    .toList();
+        }
+        if (user.getSchoolClass() == null) {
+            return List.of();
+        }
+        return votingRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
+                .map(this::finishIfExpired)
+                .toList();
     }
 
     public List<SecretVoting> getVotingsForClass(Long classId) {
+        assertCanViewClassVotings(classId);
         return votingRepository.findBySchoolClassId(classId).stream()
                 .map(this::finishIfExpired)
                 .toList();
@@ -115,11 +131,64 @@ public class VotingLifecycleService {
     private SecretVoting finishIfExpired(SecretVoting voting) {
         if (voting.getStatus() == VotingStatus.ACTIVE
                 && voting.getEndsAt() != null
-                && voting.getEndsAt().isBefore(LocalDateTime.now())) {
+                && voting.getEndsAt().isBefore(nowUtc())) {
             voting.setStatus(VotingStatus.FINISHED);
             voting.setFinishedAt(voting.getEndsAt());
             return votingRepository.save(voting);
         }
         return voting;
+    }
+
+    private void assertCanViewVoting(SecretVoting voting) {
+        User user = currentUserService.getProfile();
+        Role role = getRole(user);
+        if (role == Role.ADMIN) {
+            return;
+        }
+        if (role == Role.CURATOR && (isCreatedByCurrentAccount(voting, user) || isSameClass(voting, user))) {
+            return;
+        }
+        if (role == Role.STUDENT && isSameClass(voting, user)) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot access this voting");
+    }
+
+    private void assertCanManageVoting(SecretVoting voting) {
+        User user = currentUserService.getProfile();
+        if (getRole(user) == Role.CURATOR && isCreatedByCurrentAccount(voting, user)) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot manage this voting");
+    }
+
+    private void assertCanViewClassVotings(Long classId) {
+        User user = currentUserService.getProfile();
+        Role role = getRole(user);
+        if (role == Role.ADMIN) {
+            return;
+        }
+        if ((role == Role.STUDENT || role == Role.CURATOR)
+                && user.getSchoolClass() != null
+                && user.getSchoolClass().getId().equals(classId)) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot access votings for this class");
+    }
+
+    private Role getRole(User user) {
+        return user.getAccount() == null ? null : user.getAccount().getRole();
+    }
+
+    private boolean isCreatedByCurrentAccount(SecretVoting voting, User user) {
+        return voting.getCreatedBy() != null
+                && user.getAccount() != null
+                && voting.getCreatedBy().getId().equals(user.getAccount().getId());
+    }
+
+    private boolean isSameClass(SecretVoting voting, User user) {
+        return voting.getSchoolClass() != null
+                && user.getSchoolClass() != null
+                && voting.getSchoolClass().getId().equals(user.getSchoolClass().getId());
     }
 }

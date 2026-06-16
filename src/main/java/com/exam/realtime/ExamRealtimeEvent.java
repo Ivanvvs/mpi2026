@@ -2,14 +2,17 @@ package com.exam.realtime;
 
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 public class ExamRealtimeEvent {
 
     private Long examId;
     private String type;
     private String message;
-    private LocalDateTime occurredAt = LocalDateTime.now();
+    private LocalDateTime occurredAt = nowUtc();
 
     public ExamRealtimeEvent() {
+        // Required by JSON serialization.
     }
 
     public ExamRealtimeEvent(Long examId, String type, String message) {
