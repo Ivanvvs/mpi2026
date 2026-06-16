@@ -3,19 +3,23 @@ package com.exam.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "votes")
+@Table(
+        name = "votes",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"voting_id", "anonymous_voter_hash"})
+)
 public class Vote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long sessionId;
-
+    @Column(name = "voting_id", nullable = false)
     private Long votingId;
 
+    @Column(name = "encrypted_value", nullable = false)
     private String encryptedValue;
 
+    @Column(name = "anonymous_voter_hash", nullable = false)
     private String anonymousVoterHash;
 
     public Vote() {}
@@ -26,14 +30,6 @@ public class Vote {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
     }
 
     public Long getVotingId() {

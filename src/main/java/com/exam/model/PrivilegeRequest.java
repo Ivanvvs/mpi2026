@@ -25,6 +25,7 @@ public class PrivilegeRequest {
     @Column(length = 2000)
     private String studentWishes;
 
+    @Column(name = "required_s_points")
     private int requiredSPoints;
 
     @Enumerated(EnumType.STRING)

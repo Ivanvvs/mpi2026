@@ -1,0 +1,32 @@
+# Logs
+*.log
+hs_err_pid*
+replay_pid*
+
+# Java / Maven build output
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/timing.properties
+
+# Frontend dependencies and build output
+frontend-vue/node_modules/
+frontend-vue/dist/
+frontend-vue/.vite/
+frontend-vue/node_modules/.vite/
+frontend-vue/node_modules/.tmp/
+*.tsbuildinfo
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Local environment
+.env
+.env.*
+!.env.example

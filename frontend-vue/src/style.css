@@ -901,6 +901,24 @@ th {
   font-size: 18px;
 }
 
+.blank-page {
+  min-height: 320px;
+  background: #ffffff;
+}
+
+.expulsion-placeholder {
+  min-height: 180px;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.expulsion-placeholder p {
+  margin: 8px 0 0;
+  color: #6b7280;
+}
+
 .message {
   margin: 16px 0 0;
   padding: 12px 14px;
