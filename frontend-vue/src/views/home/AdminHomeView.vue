@@ -42,6 +42,7 @@
                   </tr>
                 </tbody>
               </table>
+              <button class="secondary wide-action">Обновить ранги</button>
             </section>
 
             <aside class="admin-side">
