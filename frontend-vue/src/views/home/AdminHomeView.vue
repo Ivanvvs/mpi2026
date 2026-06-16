@@ -56,7 +56,7 @@
               <div class="panel slim-panel">
                 <h2>Быстрые действия</h2>
                 <div class="quick-actions">
-                  <button class="secondary" @click="app.openPage('users')">+ Добавить ученика</button>
+                  <button class="secondary" @click="app.openPage('users')">+ Создать пользователя</button>
                   <button class="secondary" @click="app.openPage('violations')">Журнал нарушений</button>
                 </div>
               </div>

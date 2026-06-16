@@ -53,6 +53,7 @@ export function useSchoolApp() {
 
   const userRoleFilter = ref<Role | 'ALL'>('ALL')
   const editingUserId = ref<number | null>(null)
+  const expulsionCandidate = ref<UserResponse | null>(null)
   const userFilters = [
     { value: 'ALL' as const, label: 'Все пользователи' },
     { value: 'STUDENT' as const, label: 'Ученик' },
@@ -105,7 +106,9 @@ export function useSchoolApp() {
     ADMIN: [
       { page: 'home', label: 'Главная' },
       { page: 'classes', label: 'Классы и рейтинг' },
-      { page: 'users', label: 'Ученики' },
+      { page: 'users', label: 'Пользователи' },
+      { page: 'exams', label: 'Экзамены' },
+      { page: 'votings', label: 'Голосования' },
       { page: 'violations', label: 'Нарушения' },
       { page: 'privileges', label: 'Заявки на привилегии' }
     ],
@@ -172,6 +175,7 @@ export function useSchoolApp() {
     return roleLabel(session.role)
   })
   const isStubPage = computed(() => ['violations', 'privileges', 'my-class'].includes(currentPage.value))
+  const isAdminReferencePage = computed(() => session.role === 'ADMIN' && ['exams', 'votings'].includes(currentPage.value))
   const pageTitle = computed(() => {
     const item = currentMenu.value.find((menuItem) => menuItem.page === currentPage.value)
     if (currentPage.value === 'home' && session.role === 'ADMIN') return 'Сводная панель'
@@ -179,6 +183,7 @@ export function useSchoolApp() {
   })
   const pageSubtitle = computed(() => {
     if (currentPage.value === 'home') return ''
+    if (isAdminReferencePage.value) return ''
     if (currentPage.value === 'exams') return 'Создание, запуск, прохождение, завершение и оценивание экзаменов'
     if (currentPage.value === 'votings') return 'Создание тайного голосования, участие студентов и подсчет итогов'
     if (currentPage.value === 'users') return 'Создание пользователей, роли, валидация и список учетных записей'
@@ -403,6 +408,7 @@ export function useSchoolApp() {
     })
     confirmPassword.value = ''
     editingUserId.value = null
+    expulsionCandidate.value = null
   }
 
   async function registerUser() {
@@ -451,6 +457,7 @@ export function useSchoolApp() {
 
   function editUser(user: UserResponse) {
     editingUserId.value = user.id
+    expulsionCandidate.value = null
     Object.assign(registerForm, {
       fullName: user.fullName,
       username: user.username,
@@ -464,6 +471,16 @@ export function useSchoolApp() {
       birthDate: user.birthDate || ''
     })
     confirmPassword.value = ''
+  }
+
+  function openExpulsionPlaceholder(user: UserResponse) {
+    if (user.role !== 'STUDENT') return
+    editingUserId.value = null
+    expulsionCandidate.value = user
+  }
+
+  function closeExpulsionPlaceholder() {
+    expulsionCandidate.value = null
   }
 
   async function deactivateUser(user: UserResponse) {
@@ -842,6 +859,7 @@ export function useSchoolApp() {
     votingStatusFilter,
     userRoleFilter,
     editingUserId,
+    expulsionCandidate,
     userFilters,
     registerForm,
     confirmPassword,
@@ -871,6 +889,7 @@ export function useSchoolApp() {
     curatorClassPoints,
     topbarLabel,
     isStubPage,
+    isAdminReferencePage,
     pageTitle,
     pageSubtitle,
     recentActions,
@@ -898,6 +917,8 @@ export function useSchoolApp() {
     resetRegisterForm,
     registerUser,
     editUser,
+    openExpulsionPlaceholder,
+    closeExpulsionPlaceholder,
     deactivateUser,
     createExam,
     openExam,

@@ -14,8 +14,9 @@
         <CuratorHomeView v-if="app.currentPage === 'home' && app.session.role === 'CURATOR'" />
         <ExaminerHomeView v-if="app.currentPage === 'home' && app.session.role === 'EXAMINER'" />
         <UsersView v-if="app.currentPage === 'users'" />
-        <ExamsView v-if="app.currentPage === 'exams'" />
-        <VotingsView v-if="app.currentPage === 'votings'" />
+        <ExamsView v-if="app.currentPage === 'exams' && app.session.role !== 'ADMIN'" />
+        <VotingsView v-if="app.currentPage === 'votings' && app.session.role !== 'ADMIN'" />
+        <BlankPage v-if="app.isAdminReferencePage" />
         <ResultsView v-if="app.currentPage === 'results'" />
         <ClassesView v-if="app.currentPage === 'classes'" />
         <StubPage v-if="app.isStubPage" />
@@ -35,6 +36,7 @@ import { useSchoolApp } from './composables/useSchoolApp'
 import LoginView from './views/auth/LoginView.vue'
 import ClassesView from './views/classes/ClassesView.vue'
 import ExamsView from './views/exams/ExamsView.vue'
+import BlankPage from './views/common/BlankPage.vue'
 import StubPage from './views/common/StubPage.vue'
 import AdminHomeView from './views/home/AdminHomeView.vue'
 import CuratorHomeView from './views/home/CuratorHomeView.vue'
