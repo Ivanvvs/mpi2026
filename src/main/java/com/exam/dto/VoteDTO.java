@@ -1,16 +1,24 @@
 package com.exam.dto;
 
+import com.exam.model.Vote;
+
 public class VoteDTO {
 
-    private String option;
+    private Long id;
+    private Long votingId;
 
-    public VoteDTO() {}
-
-    public String getOption() {
-        return option;
+    public static VoteDTO from(Vote vote) {
+        VoteDTO response = new VoteDTO();
+        response.id = vote.getId();
+        response.votingId = vote.getVotingId();
+        return response;
     }
 
-    public void setOption(String option) {
-        this.option = option;
+    public Long getId() {
+        return id;
+    }
+
+    public Long getVotingId() {
+        return votingId;
     }
 }

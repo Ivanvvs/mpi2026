@@ -11,7 +11,6 @@ import com.exam.model.SchoolClass;
 import com.exam.model.User;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,48 +24,20 @@ public class UserService {
     private final AppUserRepository accountRepository;
     private final SchoolClassRepository classRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CurrentUserService currentUserService;
 
     public UserService(
             UserRepository repository,
             AppUserRepository accountRepository,
             SchoolClassRepository classRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            CurrentUserService currentUserService
     ) {
         this.repository = repository;
         this.accountRepository = accountRepository;
         this.classRepository = classRepository;
         this.passwordEncoder = passwordEncoder;
-    }
-
-    @Transactional
-    public User createUser(User user) {
-        if (user.getAccount() != null && user.getAccount().getId() == null) {
-            AppUser account = user.getAccount();
-
-            if (accountRepository.existsByUsername(account.getUsername())) {
-                throw new BadRequestException("Username is already used");
-            }
-
-            if (account.getDisplayName() == null) {
-                account.setDisplayName(account.getUsername());
-            }
-
-            if (account.getEmail() == null) {
-                account.setEmail(account.getUsername() + "@school.local");
-            }
-
-            if (account.getPassword() != null && !account.getPassword().startsWith("$2")) {
-                account.setPassword(passwordEncoder.encode(account.getPassword()));
-            }
-
-            user.setAccount(accountRepository.save(account));
-        }
-
-        if (user.getFullName() == null && user.getAccount() != null) {
-            user.setFullName(user.getAccount().getDisplayName());
-        }
-
-        return repository.save(user);
+        this.currentUserService = currentUserService;
     }
 
     @Transactional
@@ -168,12 +139,7 @@ public class UserService {
     }
 
     public User getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        AppUser account = accountRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user was not found"));
-
-        return repository.findByAccountId(account.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User profile was not found"));
+        return currentUserService.getProfile();
     }
 
     public List<SchoolClass> getClasses() {

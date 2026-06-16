@@ -1,22 +1,19 @@
 package com.exam.dto;
 
-import com.exam.model.SecretVoting;
-import com.exam.model.VotingOption;
-
 import java.util.List;
 import java.util.Map;
 
 public class VotingDetailsResponse {
 
-    private SecretVoting voting;
-    private List<VotingOption> options;
+    private SecretVotingResponse voting;
+    private List<VotingOptionResponse> options;
     private Map<String, Long> results;
     private boolean hasVoted;
     private boolean resultsVisible;
 
     public VotingDetailsResponse(
-            SecretVoting voting,
-            List<VotingOption> options,
+            SecretVotingResponse voting,
+            List<VotingOptionResponse> options,
             Map<String, Long> results,
             boolean hasVoted,
             boolean resultsVisible
@@ -28,11 +25,11 @@ public class VotingDetailsResponse {
         this.resultsVisible = resultsVisible;
     }
 
-    public SecretVoting getVoting() {
+    public SecretVotingResponse getVoting() {
         return voting;
     }
 
-    public List<VotingOption> getOptions() {
+    public List<VotingOptionResponse> getOptions() {
         return options;
     }
 

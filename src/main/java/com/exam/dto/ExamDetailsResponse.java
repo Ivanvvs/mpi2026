@@ -1,27 +1,22 @@
 package com.exam.dto;
 
-import com.exam.model.Answer;
-import com.exam.model.ExamResult;
-import com.exam.model.ExamSession;
-import com.exam.model.Violation;
-
 import java.util.List;
 
 public class ExamDetailsResponse {
 
-    private ExamSession exam;
+    private ExamSessionDTO exam;
     private List<QuestionResponse> questions;
-    private List<Answer> answers;
-    private List<ExamResult> results;
-    private List<Violation> violations;
+    private List<AnswerDTO> answers;
+    private List<ExamResultResponse> results;
+    private List<ViolationDTO> violations;
     private ExamAttemptResponse attempt;
 
     public ExamDetailsResponse(
-            ExamSession exam,
+            ExamSessionDTO exam,
             List<QuestionResponse> questions,
-            List<Answer> answers,
-            List<ExamResult> results,
-            List<Violation> violations,
+            List<AnswerDTO> answers,
+            List<ExamResultResponse> results,
+            List<ViolationDTO> violations,
             ExamAttemptResponse attempt
     ) {
         this.exam = exam;
@@ -32,7 +27,7 @@ public class ExamDetailsResponse {
         this.attempt = attempt;
     }
 
-    public ExamSession getExam() {
+    public ExamSessionDTO getExam() {
         return exam;
     }
 
@@ -40,15 +35,15 @@ public class ExamDetailsResponse {
         return questions;
     }
 
-    public List<Answer> getAnswers() {
+    public List<AnswerDTO> getAnswers() {
         return answers;
     }
 
-    public List<ExamResult> getResults() {
+    public List<ExamResultResponse> getResults() {
         return results;
     }
 
-    public List<Violation> getViolations() {
+    public List<ViolationDTO> getViolations() {
         return violations;
     }
 

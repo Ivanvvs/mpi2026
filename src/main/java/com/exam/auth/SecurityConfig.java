@@ -41,14 +41,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/users/me/class").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/users/register").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/users/create").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/users/classes").hasAnyRole("ADMIN", "CURATOR", "EXAMINER")
                         .requestMatchers(HttpMethod.GET, "/users/**").hasAnyRole("ADMIN", "CURATOR", "EXAMINER")
 
                         .requestMatchers(HttpMethod.POST, "/exam/session").hasRole("EXAMINER")
-                        .requestMatchers(HttpMethod.POST, "/exam/session/create").hasRole("EXAMINER")
                         .requestMatchers(HttpMethod.POST, "/exam/session/start/**").hasRole("EXAMINER")
                         .requestMatchers(HttpMethod.POST, "/exam/session/end/**").hasRole("EXAMINER")
                         .requestMatchers(HttpMethod.POST, "/exam/session/*/grades").hasRole("EXAMINER")
@@ -74,11 +72,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/vote/secret/my").hasAnyRole("STUDENT", "CURATOR", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/vote/secret/*/results").hasAnyRole("CURATOR", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/vote/secret/**").hasAnyRole("STUDENT", "CURATOR", "ADMIN")
-
-                        .requestMatchers("/student/**").hasAnyRole("STUDENT", "ADMIN")
-                        .requestMatchers("/curator/**").hasAnyRole("CURATOR", "ADMIN")
-                        .requestMatchers("/examiner/**").hasAnyRole("EXAMINER", "ADMIN")
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )
