@@ -16,6 +16,7 @@ import java.util.Date;
 public class JwtService {
 
     private static final int GENERATED_SECRET_BYTES = 64;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final String secret;
 
@@ -54,7 +55,7 @@ public class JwtService {
         }
 
         byte[] bytes = new byte[GENERATED_SECRET_BYTES];
-        new SecureRandom().nextBytes(bytes);
+        SECURE_RANDOM.nextBytes(bytes);
         return Base64.getEncoder().encodeToString(bytes);
     }
 }
