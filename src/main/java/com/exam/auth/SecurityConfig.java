@@ -33,7 +33,9 @@ public class SecurityConfig {
     }
 
     @Bean
+    @SuppressWarnings("java:S4502")
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // Stateless REST API: authentication is carried in the Authorization Bearer header, not in browser cookies.
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
