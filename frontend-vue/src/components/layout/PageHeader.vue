@@ -4,7 +4,6 @@
       <h1>{{ app.pageTitle }}</h1>
       <p>{{ app.pageSubtitle }}</p>
     </div>
-    <button class="secondary" @click="app.refreshCurrent">Обновить</button>
   </div>
 </template>
 

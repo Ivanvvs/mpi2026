@@ -19,6 +19,8 @@ Prepare PostgreSQL:
 make setup-db
 ```
 
+This creates or updates a local `.env` file with Spring datasource credentials. The file is ignored by git.
+
 Terminal 1, backend:
 
 ```powershell
@@ -61,6 +63,8 @@ Prepare PostgreSQL:
 make setup-db
 ```
 
+This creates or updates a local `.env` file with Spring datasource credentials. The file is ignored by git.
+
 Terminal 1, backend:
 
 ```bash
@@ -94,4 +98,21 @@ examiner / 1234
 Backend:  http://localhost:8081
 Frontend: http://127.0.0.1:5173
 Postgres: localhost:5432
+```
+
+## Environment
+
+`application.yml` imports an optional local `.env` file. Use `.env.example` as the template when setting values manually.
+
+Required for backend runtime:
+
+```text
+spring.datasource.username
+spring.datasource.password
+```
+
+Optional:
+
+```text
+jwt.secret
 ```
