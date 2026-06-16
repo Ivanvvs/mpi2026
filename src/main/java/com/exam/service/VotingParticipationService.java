@@ -117,26 +117,35 @@ public class VotingParticipationService {
     }
 
     public void validateStudentCanViewVoting(SecretVoting voting, User student) {
-        if (!student.isActive()) {
-            throw new BadRequestException("Inactive student cannot access voting");
-        }
-
-        if (student.getAccount() == null || student.getAccount().getRole() != Role.STUDENT) {
-            throw new BadRequestException("Only students can access student voting view");
-        }
-
-        if (student.getSchoolClass() == null || !voting.getSchoolClass().getId().equals(student.getSchoolClass().getId())) {
-            throw new BadRequestException("Student does not belong to voting class");
-        }
+        validateStudentAccess(
+                voting,
+                student,
+                "Inactive student cannot access voting",
+                "Only students can access student voting view"
+        );
     }
 
     private void validateStudentCanVote(SecretVoting voting, User student) {
+        validateStudentAccess(
+                voting,
+                student,
+                "Inactive student cannot vote",
+                "Only students can vote"
+        );
+    }
+
+    private void validateStudentAccess(
+            SecretVoting voting,
+            User student,
+            String inactiveMessage,
+            String roleMessage
+    ) {
         if (!student.isActive()) {
-            throw new BadRequestException("Inactive student cannot vote");
+            throw new BadRequestException(inactiveMessage);
         }
 
         if (student.getAccount() == null || student.getAccount().getRole() != Role.STUDENT) {
-            throw new BadRequestException("Only students can vote");
+            throw new BadRequestException(roleMessage);
         }
 
         if (student.getSchoolClass() == null || !voting.getSchoolClass().getId().equals(student.getSchoolClass().getId())) {

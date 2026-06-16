@@ -3,7 +3,6 @@ package com.exam.service;
 import com.exam.auth.Role;
 import com.exam.dto.CreateExamRequest;
 import com.exam.exception.BadRequestException;
-import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ExamSession;
 import com.exam.model.ExamStatus;
@@ -31,19 +30,22 @@ public class ExamLifecycleService {
     private final QuestionRepository questionRepository;
     private final ExamRealtimePublisher realtimePublisher;
     private final CurrentUserService currentUserService;
+    private final AccessControlService accessControl;
 
     public ExamLifecycleService(
             ExamSessionRepository sessionRepository,
             SchoolClassRepository classRepository,
             QuestionRepository questionRepository,
             ExamRealtimePublisher realtimePublisher,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            AccessControlService accessControl
     ) {
         this.sessionRepository = sessionRepository;
         this.classRepository = classRepository;
         this.questionRepository = questionRepository;
         this.realtimePublisher = realtimePublisher;
         this.currentUserService = currentUserService;
+        this.accessControl = accessControl;
     }
 
     @Transactional
@@ -131,13 +133,13 @@ public class ExamLifecycleService {
     }
 
     public List<ExamSession> getExamsForCurrentUser() {
-        User user = currentUserService.getProfile();
-        Role role = getRole(user);
+        User user = accessControl.currentProfile();
+        Role role = accessControl.currentRole();
         if (role == Role.ADMIN) {
             return getExams();
         }
         if (role == Role.EXAMINER) {
-            return sessionRepository.findByCreatedById(user.getAccount().getId()).stream()
+            return sessionRepository.findByCreatedById(accessControl.currentAccountId()).stream()
                     .map(this::finishIfExpired)
                     .toList();
         }
@@ -183,41 +185,18 @@ public class ExamLifecycleService {
     }
 
     private void assertCanViewExam(ExamSession session) {
-        User user = currentUserService.getProfile();
-        Role role = getRole(user);
-        if (role == Role.ADMIN) {
-            return;
-        }
-        if (role == Role.EXAMINER && isCreatedByCurrentAccount(session, user)) {
-            return;
-        }
-        if ((role == Role.STUDENT || role == Role.CURATOR) && isSameClass(session, user)) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot access this exam");
+        Role role = accessControl.currentRole();
+        boolean allowed = role == Role.ADMIN
+                || (role == Role.EXAMINER && accessControl.owns(session.getCreatedBy()))
+                || ((role == Role.STUDENT || role == Role.CURATOR)
+                && accessControl.belongsToClass(session.getSchoolClass()));
+        accessControl.require(allowed, "Current user cannot access this exam");
     }
 
     private void assertCanManageExam(ExamSession session) {
-        User user = currentUserService.getProfile();
-        if (getRole(user) == Role.EXAMINER && isCreatedByCurrentAccount(session, user)) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot manage this exam");
-    }
-
-    private Role getRole(User user) {
-        return user.getAccount() == null ? null : user.getAccount().getRole();
-    }
-
-    private boolean isCreatedByCurrentAccount(ExamSession session, User user) {
-        return session.getCreatedBy() != null
-                && user.getAccount() != null
-                && session.getCreatedBy().getId().equals(user.getAccount().getId());
-    }
-
-    private boolean isSameClass(ExamSession session, User user) {
-        return session.getSchoolClass() != null
-                && user.getSchoolClass() != null
-                && session.getSchoolClass().getId().equals(user.getSchoolClass().getId());
+        accessControl.require(
+                accessControl.hasRole(Role.EXAMINER) && accessControl.owns(session.getCreatedBy()),
+                "Current user cannot manage this exam"
+        );
     }
 }

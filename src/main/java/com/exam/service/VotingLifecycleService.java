@@ -4,7 +4,6 @@ import com.exam.auth.Role;
 import com.exam.dto.CreateVotingRequest;
 import com.exam.dto.VotingOptionRequest;
 import com.exam.exception.BadRequestException;
-import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.SchoolClass;
 import com.exam.model.SecretVoting;
@@ -28,17 +27,20 @@ public class VotingLifecycleService {
     private final VotingOptionRepository optionRepository;
     private final SchoolClassRepository classRepository;
     private final CurrentUserService currentUserService;
+    private final AccessControlService accessControl;
 
     public VotingLifecycleService(
             SecretVotingRepository votingRepository,
             VotingOptionRepository optionRepository,
             SchoolClassRepository classRepository,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            AccessControlService accessControl
     ) {
         this.votingRepository = votingRepository;
         this.optionRepository = optionRepository;
         this.classRepository = classRepository;
         this.currentUserService = currentUserService;
+        this.accessControl = accessControl;
     }
 
     @Transactional
@@ -93,8 +95,8 @@ public class VotingLifecycleService {
     }
 
     public List<SecretVoting> getVotingsForCurrentUser() {
-        User user = currentUserService.getProfile();
-        Role role = getRole(user);
+        User user = accessControl.currentProfile();
+        Role role = accessControl.currentRole();
         if (role == Role.ADMIN) {
             return getVotings();
         }
@@ -104,7 +106,7 @@ public class VotingLifecycleService {
                     .toList();
         }
         if (role == Role.CURATOR && user.getAccount() != null) {
-            return votingRepository.findByCreatedById(user.getAccount().getId()).stream()
+            return votingRepository.findByCreatedById(accessControl.currentAccountId()).stream()
                     .map(this::finishIfExpired)
                     .toList();
         }
@@ -140,55 +142,25 @@ public class VotingLifecycleService {
     }
 
     private void assertCanViewVoting(SecretVoting voting) {
-        User user = currentUserService.getProfile();
-        Role role = getRole(user);
-        if (role == Role.ADMIN) {
-            return;
-        }
-        if (role == Role.CURATOR && (isCreatedByCurrentAccount(voting, user) || isSameClass(voting, user))) {
-            return;
-        }
-        if (role == Role.STUDENT && isSameClass(voting, user)) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot access this voting");
+        Role role = accessControl.currentRole();
+        boolean allowed = role == Role.ADMIN
+                || (role == Role.CURATOR
+                && (accessControl.owns(voting.getCreatedBy()) || accessControl.belongsToClass(voting.getSchoolClass())))
+                || (role == Role.STUDENT && accessControl.belongsToClass(voting.getSchoolClass()));
+        accessControl.require(allowed, "Current user cannot access this voting");
     }
 
     private void assertCanManageVoting(SecretVoting voting) {
-        User user = currentUserService.getProfile();
-        if (getRole(user) == Role.CURATOR && isCreatedByCurrentAccount(voting, user)) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot manage this voting");
+        accessControl.require(
+                accessControl.hasRole(Role.CURATOR) && accessControl.owns(voting.getCreatedBy()),
+                "Current user cannot manage this voting"
+        );
     }
 
     private void assertCanViewClassVotings(Long classId) {
-        User user = currentUserService.getProfile();
-        Role role = getRole(user);
-        if (role == Role.ADMIN) {
-            return;
-        }
-        if ((role == Role.STUDENT || role == Role.CURATOR)
-                && user.getSchoolClass() != null
-                && user.getSchoolClass().getId().equals(classId)) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot access votings for this class");
-    }
-
-    private Role getRole(User user) {
-        return user.getAccount() == null ? null : user.getAccount().getRole();
-    }
-
-    private boolean isCreatedByCurrentAccount(SecretVoting voting, User user) {
-        return voting.getCreatedBy() != null
-                && user.getAccount() != null
-                && voting.getCreatedBy().getId().equals(user.getAccount().getId());
-    }
-
-    private boolean isSameClass(SecretVoting voting, User user) {
-        return voting.getSchoolClass() != null
-                && user.getSchoolClass() != null
-                && voting.getSchoolClass().getId().equals(user.getSchoolClass().getId());
+        Role role = accessControl.currentRole();
+        boolean allowed = role == Role.ADMIN
+                || ((role == Role.STUDENT || role == Role.CURATOR) && accessControl.belongsToClass(classId));
+        accessControl.require(allowed, "Current user cannot access votings for this class");
     }
 }
