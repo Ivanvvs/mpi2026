@@ -3,6 +3,8 @@ package com.exam.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(
         name = "exam_results",
@@ -30,7 +32,7 @@ public class ExamResult {
 
     private Integer rankPlace;
 
-    private LocalDateTime gradedAt = LocalDateTime.now();
+    private LocalDateTime gradedAt = nowUtc();
 
     public Long getId() {
         return id;

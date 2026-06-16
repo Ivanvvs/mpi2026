@@ -1,42 +1,31 @@
-package com.exam.model;
+package com.exam.dto;
 
-import jakarta.persistence.*;
+import com.exam.model.Violation;
+
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "violations")
-public class Violation {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ViolationRequest {
 
     private Long sessionId;
-
     private Long userId;
-
     private String type;
-
     private String description;
-
     private String evidencePath;
-
-    private Integer pointsPenalty = 0;
-
+    private Integer pointsPenalty;
     private boolean affectsExpulsion;
-
     private LocalDateTime time;
 
-    public Violation() {
-        // Required by JPA.
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
+    public Violation toViolation() {
+        Violation violation = new Violation();
+        violation.setSessionId(sessionId);
+        violation.setUserId(userId);
+        violation.setType(type);
+        violation.setDescription(description);
+        violation.setEvidencePath(evidencePath);
+        violation.setPointsPenalty(pointsPenalty);
+        violation.setAffectsExpulsion(affectsExpulsion);
+        violation.setTime(time);
+        return violation;
     }
 
     public Long getSessionId() {

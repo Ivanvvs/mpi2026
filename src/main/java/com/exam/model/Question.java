@@ -30,7 +30,9 @@ public class Question {
     @Column(length = 4000)
     private String metadataJson;
 
-    public Question() {}
+    public Question() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;

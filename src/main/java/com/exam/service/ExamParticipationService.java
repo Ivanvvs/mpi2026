@@ -26,8 +26,9 @@ import com.exam.realtime.ExamRealtimePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Service
 public class ExamParticipationService {
@@ -110,7 +111,7 @@ public class ExamParticipationService {
         answer.setUserId(studentId);
         answer.setQuestionId(questionId);
         answer.setText(text);
-        answer.setSavedAt(LocalDateTime.now());
+        answer.setSavedAt(nowUtc());
         answer.setFinalSubmitted(finalSubmitted);
 
         Answer saved = answerRepository.save(answer);
@@ -135,7 +136,7 @@ public class ExamParticipationService {
         validateStudentCanTakeExam(session, user);
         ExamAttempt attempt = getOrCreateAttempt(session, user);
         if (attempt.getSubmittedAt() == null) {
-            attempt.setSubmittedAt(LocalDateTime.now());
+            attempt.setSubmittedAt(nowUtc());
             attempt = attemptRepository.save(attempt);
             answerRepository.findBySessionIdAndUserId(sessionId, user.getId()).forEach(answer -> {
                 answer.setFinalSubmitted(true);
@@ -193,7 +194,7 @@ public class ExamParticipationService {
                     ExamAttempt attempt = new ExamAttempt();
                     attempt.setSession(session);
                     attempt.setStudent(student);
-                    attempt.setStartedAt(LocalDateTime.now());
+                    attempt.setStartedAt(nowUtc());
                     return attemptRepository.save(attempt);
                 });
     }
@@ -207,10 +208,10 @@ public class ExamParticipationService {
             throw new BadRequestException("Only students can submit exam answers");
         }
 
-        if (session.getSchoolClass() != null) {
-            if (student.getSchoolClass() == null || !session.getSchoolClass().getId().equals(student.getSchoolClass().getId())) {
-                throw new BadRequestException("Student does not belong to exam class");
-            }
+        if (session.getSchoolClass() != null
+                && (student.getSchoolClass() == null
+                || !session.getSchoolClass().getId().equals(student.getSchoolClass().getId()))) {
+            throw new BadRequestException("Student does not belong to exam class");
         }
     }
 }

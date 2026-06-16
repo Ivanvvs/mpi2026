@@ -29,7 +29,7 @@ public class ExamController {
 
     @GetMapping
     public List<ExamSessionDTO> list() {
-        return examService.getExams().stream().map(ExamSessionDTO::from).toList();
+        return examService.getExamsForCurrentUser().stream().map(ExamSessionDTO::from).toList();
     }
 
     @GetMapping("/my")

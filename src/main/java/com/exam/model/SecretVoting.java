@@ -4,6 +4,8 @@ import com.exam.auth.AppUser;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(name = "secret_votings")
 public class SecretVoting {
@@ -29,7 +31,7 @@ public class SecretVoting {
     @Enumerated(EnumType.STRING)
     private VotingStatus status = VotingStatus.ACTIVE;
 
-    private LocalDateTime startedAt = LocalDateTime.now();
+    private LocalDateTime startedAt = nowUtc();
 
     private LocalDateTime endsAt;
 

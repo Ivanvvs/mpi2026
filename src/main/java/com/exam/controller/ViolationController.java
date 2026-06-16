@@ -1,7 +1,7 @@
 package com.exam.controller;
 
 import com.exam.dto.ViolationDTO;
-import com.exam.model.Violation;
+import com.exam.dto.ViolationRequest;
 import com.exam.service.ViolationService;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,13 +18,13 @@ public class ViolationController {
     }
 
     @PostMapping("/report")
-    public ViolationDTO report(@RequestBody Violation violation) {
-        return ViolationDTO.from(violationService.reportViolation(violation));
+    public ViolationDTO report(@RequestBody ViolationRequest request) {
+        return ViolationDTO.from(violationService.reportViolation(request.toViolation()));
     }
 
     @PostMapping("/report/me")
-    public ViolationDTO reportMe(@RequestBody Violation violation) {
-        return ViolationDTO.from(violationService.reportCurrentUserViolation(violation));
+    public ViolationDTO reportMe(@RequestBody ViolationRequest request) {
+        return ViolationDTO.from(violationService.reportCurrentUserViolation(request.toViolation()));
     }
 
     @GetMapping("/session/{sessionId}")

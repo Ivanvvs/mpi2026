@@ -22,7 +22,9 @@ public class Vote {
     @Column(name = "anonymous_voter_hash", nullable = false)
     private String anonymousVoterHash;
 
-    public Vote() {}
+    public Vote() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;

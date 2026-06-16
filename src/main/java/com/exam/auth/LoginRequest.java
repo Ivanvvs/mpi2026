@@ -6,6 +6,7 @@ public class LoginRequest {
     private String password;
 
     public LoginRequest() {
+        // Required by JSON deserialization.
     }
 
     public String getUsername() {

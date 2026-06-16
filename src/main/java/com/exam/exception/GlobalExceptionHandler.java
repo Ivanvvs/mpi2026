@@ -22,6 +22,12 @@ public class GlobalExceptionHandler {
         return new ApiErrorResponse(exception.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiErrorResponse handleForbidden(ForbiddenException exception) {
+        return new ApiErrorResponse(exception.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiErrorResponse handleValidation(MethodArgumentNotValidException exception) {

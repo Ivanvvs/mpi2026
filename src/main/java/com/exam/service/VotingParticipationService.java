@@ -20,9 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Service
 public class VotingParticipationService {
@@ -63,7 +64,7 @@ public class VotingParticipationService {
             throw new BadRequestException("Voting is already finished");
         }
 
-        if (voting.getEndsAt() != null && voting.getEndsAt().isBefore(LocalDateTime.now())) {
+        if (voting.getEndsAt() != null && voting.getEndsAt().isBefore(nowUtc())) {
             lifecycleService.finishVoting(votingId);
             throw new BadRequestException("Voting time is over");
         }

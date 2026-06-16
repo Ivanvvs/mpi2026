@@ -4,6 +4,8 @@ import com.exam.auth.AppUser;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.exam.util.DateTimeUtils.nowUtc;
+
 @Entity
 @Table(name = "privilege_requests")
 public class PrivilegeRequest {
@@ -31,7 +33,7 @@ public class PrivilegeRequest {
     @Enumerated(EnumType.STRING)
     private PrivilegeRequestStatus status = PrivilegeRequestStatus.PENDING;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = nowUtc();
 
     public Long getId() {
         return id;

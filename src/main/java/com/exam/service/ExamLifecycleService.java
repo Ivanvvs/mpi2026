@@ -3,6 +3,7 @@ package com.exam.service;
 import com.exam.auth.Role;
 import com.exam.dto.CreateExamRequest;
 import com.exam.exception.BadRequestException;
+import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ExamSession;
 import com.exam.model.ExamStatus;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Service
 public class ExamLifecycleService {
@@ -91,7 +94,8 @@ public class ExamLifecycleService {
         }
 
         session.setStatus(ExamStatus.ACTIVE);
-        session.setStartTime(LocalDateTime.now());
+        assertCanManageExam(session);
+        session.setStartTime(nowUtc());
         ExamSession saved = sessionRepository.save(session);
         realtimePublisher.publish(id, "EXAM_STARTED", "Exam has been started");
         return saved;
@@ -106,7 +110,8 @@ public class ExamLifecycleService {
         }
 
         session.setStatus(ExamStatus.FINISHED);
-        session.setEndTime(LocalDateTime.now());
+        assertCanManageExam(session);
+        session.setEndTime(nowUtc());
         ExamSession saved = sessionRepository.save(session);
         realtimePublisher.publish(id, "EXAM_FINISHED", "Exam has been finished");
         return saved;
@@ -115,6 +120,7 @@ public class ExamLifecycleService {
     public ExamSession getSession(Long id) {
         ExamSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exam was not found"));
+        assertCanViewExam(session);
         return finishIfExpired(session);
     }
 
@@ -126,15 +132,21 @@ public class ExamLifecycleService {
 
     public List<ExamSession> getExamsForCurrentUser() {
         User user = currentUserService.getProfile();
-        if (user.getAccount() != null && user.getAccount().getRole() == Role.STUDENT) {
-            if (user.getSchoolClass() == null) {
-                return List.of();
-            }
-            return sessionRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
+        Role role = getRole(user);
+        if (role == Role.ADMIN) {
+            return getExams();
+        }
+        if (role == Role.EXAMINER) {
+            return sessionRepository.findByCreatedById(user.getAccount().getId()).stream()
                     .map(this::finishIfExpired)
                     .toList();
         }
-        return getExams();
+        if (user.getSchoolClass() == null) {
+            return List.of();
+        }
+        return sessionRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
+                .map(this::finishIfExpired)
+                .toList();
     }
 
     public List<ExamSession> getExamsForClass(Long classId) {
@@ -159,7 +171,7 @@ public class ExamLifecycleService {
         }
 
         LocalDateTime endsAt = startedAt.plusMinutes(session.getDurationMinutes());
-        if (LocalDateTime.now().isBefore(endsAt)) {
+        if (nowUtc().isBefore(endsAt)) {
             return session;
         }
 
@@ -168,5 +180,44 @@ public class ExamLifecycleService {
         ExamSession saved = sessionRepository.save(session);
         realtimePublisher.publish(session.getId(), "EXAM_FINISHED", "Exam has been finished by time limit");
         return saved;
+    }
+
+    private void assertCanViewExam(ExamSession session) {
+        User user = currentUserService.getProfile();
+        Role role = getRole(user);
+        if (role == Role.ADMIN) {
+            return;
+        }
+        if (role == Role.EXAMINER && isCreatedByCurrentAccount(session, user)) {
+            return;
+        }
+        if ((role == Role.STUDENT || role == Role.CURATOR) && isSameClass(session, user)) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot access this exam");
+    }
+
+    private void assertCanManageExam(ExamSession session) {
+        User user = currentUserService.getProfile();
+        if (getRole(user) == Role.EXAMINER && isCreatedByCurrentAccount(session, user)) {
+            return;
+        }
+        throw new ForbiddenException("Current user cannot manage this exam");
+    }
+
+    private Role getRole(User user) {
+        return user.getAccount() == null ? null : user.getAccount().getRole();
+    }
+
+    private boolean isCreatedByCurrentAccount(ExamSession session, User user) {
+        return session.getCreatedBy() != null
+                && user.getAccount() != null
+                && session.getCreatedBy().getId().equals(user.getAccount().getId());
+    }
+
+    private boolean isSameClass(ExamSession session, User user) {
+        return session.getSchoolClass() != null
+                && user.getSchoolClass() != null
+                && session.getSchoolClass().getId().equals(user.getSchoolClass().getId());
     }
 }

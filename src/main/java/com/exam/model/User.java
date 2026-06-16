@@ -33,7 +33,9 @@ public class User {
 
     private boolean active = true;
 
-    public User() {}
+    public User() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;
