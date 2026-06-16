@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDate;
+import java.time.Month;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
@@ -80,7 +83,7 @@ class UserServiceRegistrationTest {
         request.setClassId(schoolClass.getId());
         request.setPassportData("4000 111111");
         request.setContactInfo("updated contact");
-        request.setBirthDate(java.time.LocalDate.of(2007, 3, 15));
+        request.setBirthDate(LocalDate.of(2007, Month.MARCH, 15));
         request.setActive(true);
 
         User updated = userService.updateUser(user.getId(), request);
@@ -92,7 +95,7 @@ class UserServiceRegistrationTest {
         assertThat(updated.getSchoolClass().getId()).isEqualTo(schoolClass.getId());
         assertThat(updated.getPassportData()).isEqualTo("4000 111111");
         assertThat(updated.getContactInfo()).isEqualTo("updated contact");
-        assertThat(updated.getBirthDate()).isEqualTo(java.time.LocalDate.of(2007, 3, 15));
+        assertThat(updated.getBirthDate()).isEqualTo(LocalDate.of(2007, Month.MARCH, 15));
     }
 
     @Test
