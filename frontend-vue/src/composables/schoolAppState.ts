@@ -63,6 +63,7 @@ export function createSchoolAppState() {
   })
   const confirmPassword = ref('')
   const sendCredentials = ref(true)
+  const userSaveSuccess = ref(false)
 
   const examForm = reactive({
     title: 'test',
@@ -116,6 +117,7 @@ export function createSchoolAppState() {
     registerForm,
     confirmPassword,
     sendCredentials,
+    userSaveSuccess,
     examForm,
     examQuestionsText,
     answerDrafts,

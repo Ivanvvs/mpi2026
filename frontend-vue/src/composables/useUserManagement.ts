@@ -25,6 +25,7 @@ interface UseUserManagementOptions {
   expulsionCandidate: Ref<UserResponse | null>
   classes: Ref<SchoolClass[]>
   loading: Ref<boolean>
+  userSaveSuccess: Ref<boolean>
   loadUsers: () => Promise<void>
   setMessage: (text: string, kind?: MessageKind) => void
 }
@@ -38,9 +39,12 @@ export function useUserManagement(options: UseUserManagementOptions) {
     expulsionCandidate,
     classes,
     loading,
+    userSaveSuccess,
     loadUsers,
     setMessage
   } = options
+
+  let successTimer: ReturnType<typeof window.setTimeout> | null = null
 
   function generatePassword() {
     const password = Math.random().toString(36).slice(2, 10)
@@ -64,18 +68,24 @@ export function useUserManagement(options: UseUserManagementOptions) {
     confirmPassword.value = ''
     editingUserId.value = null
     expulsionCandidate.value = null
+    userSaveSuccess.value = false
   }
 
   async function registerUser() {
     loading.value = true
+    userSaveSuccess.value = false
     try {
       if (!editingUserId.value && registerForm.password !== confirmPassword.value) {
         throw new Error('Пароли не совпадают')
       }
 
+      if ((registerForm.role === 'STUDENT' || registerForm.role === 'CURATOR') && !registerForm.classId) {
+        throw new Error('Для ученика или куратора обязательно выберите класс')
+      }
+
       const body = {
         ...registerForm,
-        classId: registerForm.role === 'STUDENT' ? registerForm.classId : null,
+        classId: registerForm.role === 'STUDENT' || registerForm.role === 'CURATOR' ? registerForm.classId : null,
         entranceExamScore: registerForm.role === 'STUDENT' ? registerForm.entranceExamScore : null,
         birthDate: registerForm.birthDate || null
       }
@@ -86,6 +96,7 @@ export function useUserManagement(options: UseUserManagementOptions) {
           method: 'PUT',
           body: JSON.stringify({
             fullName: body.fullName,
+            username: body.username,
             email: body.email,
             role: body.role,
             classId: body.classId,
@@ -103,6 +114,7 @@ export function useUserManagement(options: UseUserManagementOptions) {
       await loadUsers()
       resetRegisterForm()
       setMessage(wasEditing ? 'Пользователь обновлен' : 'Пользователь создан', 'success')
+      showSaveSuccess()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Ошибка регистрации', 'error')
     } finally {
@@ -126,6 +138,18 @@ export function useUserManagement(options: UseUserManagementOptions) {
       birthDate: user.birthDate || ''
     })
     confirmPassword.value = ''
+    userSaveSuccess.value = false
+  }
+
+  function showSaveSuccess() {
+    if (successTimer) {
+      window.clearTimeout(successTimer)
+    }
+    userSaveSuccess.value = true
+    successTimer = window.setTimeout(() => {
+      userSaveSuccess.value = false
+      successTimer = null
+    }, 2500)
   }
 
   function openExpulsionPlaceholder(user: UserResponse) {
