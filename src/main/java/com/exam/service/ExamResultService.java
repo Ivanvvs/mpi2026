@@ -11,6 +11,7 @@ import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
 import com.exam.model.ExamStatus;
 import com.exam.model.SchoolClass;
+import com.exam.model.User;
 import com.exam.repository.ExamResultRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
