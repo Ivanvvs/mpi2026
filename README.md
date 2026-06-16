@@ -102,17 +102,49 @@ Postgres: localhost:5432
 
 ## Environment
 
-`application.yml` imports an optional local `.env` file. Use `.env.example` as the template when setting values manually.
+The backend reads database credentials from a local `.env` file in the project root.
 
-Required for backend runtime:
+To get these environment variables automatically, run:
 
-```text
-spring.datasource.username
-spring.datasource.password
+```powershell
+make setup-db
 ```
 
-Optional:
+This command creates the PostgreSQL database/user and writes `.env` automatically.
 
-```text
-jwt.secret
+After it finishes, `.env` will contain:
+
+```properties
+spring.datasource.username=ksu
+spring.datasource.password=<generated-local-password>
 ```
+
+Then start the backend:
+
+```powershell
+make backend
+```
+
+If `make` is not installed on Windows, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-db.ps1 -PostgresPassword xxxx
+.\mvnw.cmd spring-boot:run
+```
+
+If you want fixed local study credentials instead of a generated password, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-db.ps1 -PostgresPassword xxxx -AppPassword ksu
+```
+
+Then `.env` will contain:
+
+```properties
+spring.datasource.username=ksu
+spring.datasource.password=ksu
+```
+
+`.env.example` is only a template that shows which keys are needed. `.env` is ignored by git and should stay local.
+
+`jwt.secret` is optional for local runs. If it is not set, the backend generates a temporary key on startup.
