@@ -3,10 +3,10 @@ package com.exam.controller;
 import com.exam.dto.CreateVotingRequest;
 import com.exam.dto.SubmitOwnVoteRequest;
 import com.exam.dto.SubmitVoteRequest;
+import com.exam.dto.SecretVotingResponse;
+import com.exam.dto.VoteDTO;
 import com.exam.dto.VotingDetailsResponse;
-import com.exam.model.Vote;
-import com.exam.model.SecretVoting;
-import com.exam.model.VotingOption;
+import com.exam.dto.VotingOptionResponse;
 import com.exam.service.VotingService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/vote")
-@CrossOrigin(origins = "*")
 public class VotingController {
 
     private final VotingService votingService;
@@ -26,21 +25,21 @@ public class VotingController {
     }
 
     @PostMapping("/secret")
-    public SecretVoting createVoting(@Valid @RequestBody CreateVotingRequest request) {
-        return votingService.createVoting(request);
+    public SecretVotingResponse createVoting(@Valid @RequestBody CreateVotingRequest request) {
+        return SecretVotingResponse.from(votingService.createVoting(request));
     }
 
     @GetMapping("/secret")
-    public List<SecretVoting> listVotings(@RequestParam(required = false) Long classId) {
+    public List<SecretVotingResponse> listVotings(@RequestParam(required = false) Long classId) {
         if (classId != null) {
-            return votingService.getVotingsForClass(classId);
+            return votingService.getVotingsForClass(classId).stream().map(SecretVotingResponse::from).toList();
         }
-        return votingService.getVotings();
+        return votingService.getVotings().stream().map(SecretVotingResponse::from).toList();
     }
 
     @GetMapping("/secret/my")
-    public List<SecretVoting> myVotings() {
-        return votingService.getVotingsForCurrentUser();
+    public List<SecretVotingResponse> myVotings() {
+        return votingService.getVotingsForCurrentUser().stream().map(SecretVotingResponse::from).toList();
     }
 
     @GetMapping("/secret/{votingId}")
@@ -49,29 +48,29 @@ public class VotingController {
     }
 
     @GetMapping("/secret/{votingId}/options")
-    public List<VotingOption> votingOptions(@PathVariable Long votingId) {
-        return votingService.getOptions(votingId);
+    public List<VotingOptionResponse> votingOptions(@PathVariable Long votingId) {
+        return votingService.getOptions(votingId).stream().map(VotingOptionResponse::from).toList();
     }
 
     @PostMapping("/secret/{votingId}/votes")
-    public Vote submitSecretVote(
+    public VoteDTO submitSecretVote(
             @PathVariable Long votingId,
             @Valid @RequestBody SubmitVoteRequest request
     ) {
-        return votingService.submitVote(votingId, request);
+        return VoteDTO.from(votingService.submitVote(votingId, request));
     }
 
     @PostMapping("/secret/{votingId}/votes/me")
-    public Vote submitMySecretVote(
+    public VoteDTO submitMySecretVote(
             @PathVariable Long votingId,
             @Valid @RequestBody SubmitOwnVoteRequest request
     ) {
-        return votingService.submitCurrentUserVote(votingId, request.getOptionId());
+        return VoteDTO.from(votingService.submitCurrentUserVote(votingId, request.getOptionId()));
     }
 
     @PostMapping("/secret/{votingId}/finish")
-    public SecretVoting finishVoting(@PathVariable Long votingId) {
-        return votingService.finishVoting(votingId);
+    public SecretVotingResponse finishVoting(@PathVariable Long votingId) {
+        return SecretVotingResponse.from(votingService.finishVoting(votingId));
     }
 
     @GetMapping("/secret/{votingId}/results")

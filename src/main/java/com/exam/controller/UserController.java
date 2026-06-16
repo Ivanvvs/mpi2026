@@ -1,28 +1,23 @@
 package com.exam.controller;
 
-import com.exam.model.User;
 import com.exam.dto.RegisterUserRequest;
 import com.exam.dto.SchoolClassResponse;
 import com.exam.dto.UpdateUserRequest;
 import com.exam.dto.UserResponse;
 import com.exam.service.UserService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/users")
-@CrossOrigin(origins = "*")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @PostMapping("/create")
-    public User create(@RequestBody User user) {
-        return userService.createUser(user);
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @PostMapping("/register")
@@ -45,11 +40,6 @@ public class UserController {
     @GetMapping("/me/class")
     public SchoolClassResponse myClass() {
         return SchoolClassResponse.from(userService.getCurrentUserClass());
-    }
-
-    @GetMapping("/{id}")
-    public User getById(@PathVariable Long id) {
-        return userService.getUserById(id);
     }
 
     @PutMapping("/{id}")
