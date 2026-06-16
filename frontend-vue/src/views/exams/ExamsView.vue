@@ -100,7 +100,6 @@
               </div>
               <div class="inline-actions">
                 <button v-if="app.selectedExam.exam.status === 'ACTIVE'" class="danger" @click="app.finishExam(app.selectedExam.exam.id)">Завершить экзамен</button>
-                <button class="secondary" @click="app.refreshCurrent">Обновить</button>
               </div>
             </div>
 
@@ -154,7 +153,6 @@
                 <h3>Быстрые действия</h3>
                 <div class="quick-actions">
                   <button class="secondary" type="button">Сообщение ученикам</button>
-                  <button class="secondary" type="button" @click="app.refreshCurrent">Обновить список</button>
                   <button class="secondary" type="button" @click="app.connectExamSocket(app.selectedExam.exam.id)">Подключить WebSocket</button>
                 </div>
               </section>

@@ -3,7 +3,7 @@ param(
     [string]$PostgresPassword = "",
     [string]$AppDb = "examdb",
     [string]$AppUser = "ksu",
-    [string]$AppPassword = "ksu"
+    [string]$AppPassword = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +26,13 @@ if ($PostgresPassword) {
     $env:PGPASSWORD = $PostgresPassword
 }
 
+if (-not $AppPassword) {
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    $AppPassword = -join (1..32 | ForEach-Object {
+        $chars[(Get-Random -Minimum 0 -Maximum $chars.Length)]
+    })
+}
+
 psql -U $PostgresUser -d postgres -v ON_ERROR_STOP=1 -c "DO `$`$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$AppUser') THEN CREATE ROLE $AppUser LOGIN PASSWORD '$AppPassword'; ELSE ALTER ROLE $AppUser WITH LOGIN PASSWORD '$AppPassword'; END IF; END `$`$;"
 
 $exists = psql -U $PostgresUser -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$AppDb';"
@@ -37,3 +44,10 @@ psql -U $PostgresUser -d postgres -v ON_ERROR_STOP=1 -c "GRANT ALL PRIVILEGES ON
 
 $env:PGPASSWORD = $AppPassword
 psql -U $AppUser -d $AppDb -v ON_ERROR_STOP=1 -c "SELECT current_database(), current_user;"
+
+@"
+spring.datasource.username=$AppUser
+spring.datasource.password=$AppPassword
+"@ | Set-Content -Path ".env" -Encoding utf8
+
+Write-Host "Local .env has been written for Spring Boot."
