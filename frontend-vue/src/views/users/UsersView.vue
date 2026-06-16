@@ -4,12 +4,12 @@
       <h2>Создание нового пользователя</h2>
       <form class="registration-form" @submit.prevent="app.registerUser">
         <label>
-          <span>ФИО</span>
+          <span>ФИО <small class="field-note required-note">обязательно</small></span>
           <input v-model.trim="app.registerForm.fullName" placeholder="Введите ФИО полностью" required />
         </label>
         <label>
-          <span>Роль</span>
-          <select v-model="app.registerForm.role">
+          <span>Роль <small class="field-note required-note">обязательно</small></span>
+          <select v-model="app.registerForm.role" required>
             <option value="STUDENT">Ученик</option>
             <option value="EXAMINER">Экзаменатор-модератор</option>
             <option value="CURATOR">Куратор класса</option>
@@ -17,8 +17,17 @@
           </select>
         </label>
         <label>
-          <span>Класс</span>
-          <select v-model.number="app.registerForm.classId" :disabled="app.registerForm.role !== 'STUDENT'">
+          <span>
+            Класс
+            <small class="field-note" :class="['STUDENT', 'CURATOR'].includes(app.registerForm.role) ? 'required-note' : 'optional-note'">
+              {{ ['STUDENT', 'CURATOR'].includes(app.registerForm.role) ? 'обязательно' : 'необязательно' }}
+            </small>
+          </span>
+          <select
+            v-model.number="app.registerForm.classId"
+            :disabled="!['STUDENT', 'CURATOR'].includes(app.registerForm.role)"
+            :required="['STUDENT', 'CURATOR'].includes(app.registerForm.role)"
+          >
             <option :value="null">Выберите класс</option>
             <option v-for="schoolClass in app.classes" :key="schoolClass.id" :value="schoolClass.id">
               {{ schoolClass.name }}
@@ -26,36 +35,36 @@
           </select>
         </label>
         <label>
-          <span>Дата рождения</span>
+          <span>Дата рождения <small class="field-note optional-note">необязательно</small></span>
           <input v-model="app.registerForm.birthDate" type="date" />
         </label>
         <label>
-          <span>Паспортные данные</span>
+          <span>Паспортные данные <small class="field-note optional-note">необязательно</small></span>
           <input v-model.trim="app.registerForm.passportData" placeholder="Серия, номер или иной идентификатор" />
         </label>
         <label>
-          <span>Контактные данные</span>
-          <input v-model.trim="app.registerForm.contactInfo" placeholder="Телефон или другой контакт" />
+          <span>Контактные данные <small class="field-note optional-note">необязательно</small></span>
+          <input v-model.trim="app.registerForm.contactInfo" placeholder="Телефон или другой контакт; если пусто, будет email" />
         </label>
         <label v-if="app.registerForm.role === 'STUDENT'">
-          <span>Вступительный балл</span>
+          <span>Вступительный балл <small class="field-note optional-note">необязательно</small></span>
           <input v-model.number="app.registerForm.entranceExamScore" type="number" min="0" />
         </label>
         <label>
-          <span>Email</span>
+          <span>Email <small class="field-note required-note">обязательно</small></span>
           <input v-model.trim="app.registerForm.email" type="email" placeholder="Введите email" required />
         </label>
         <label>
-          <span>Логин</span>
+          <span>Логин <small class="field-note required-note">обязательно</small></span>
           <input v-model.trim="app.registerForm.username" placeholder="Введите логин" required />
         </label>
         <label v-if="!app.editingUserId" class="password-with-action">
-          <span>Пароль</span>
+          <span>Пароль <small class="field-note required-note">обязательно</small></span>
           <input v-model="app.registerForm.password" placeholder="Введите пароль" required />
           <button class="secondary compact" type="button" @click="app.generatePassword">Сгенерировать</button>
         </label>
         <label v-if="!app.editingUserId">
-          <span>Подтверждение пароля</span>
+          <span>Подтверждение пароля <small class="field-note required-note">обязательно</small></span>
           <input v-model="app.confirmPassword" placeholder="Повторите пароль" required />
         </label>
         <label class="check-row full">
@@ -67,6 +76,7 @@
             {{ app.editingUserId ? 'Сохранить изменения' : 'Создать пользователя' }}
           </button>
           <button class="secondary" type="button" @click="app.resetRegisterForm">Отмена</button>
+          <span v-if="app.userSaveSuccess" class="save-success" aria-live="polite" title="Сохранено">✓</span>
         </div>
       </form>
     </div>

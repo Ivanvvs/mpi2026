@@ -72,7 +72,7 @@ public class UserService {
         user.setFullName(request.getFullName());
         user.setPassportData(request.getPassportData());
         user.setEntranceExamScore(request.getEntranceExamScore());
-        user.setContactInfo(request.getContactInfo());
+        user.setContactInfo(contactInfoOrEmail(request.getContactInfo(), request.getEmail()));
         user.setBirthDate(request.getBirthDate());
         user.setSchoolClass(schoolClass);
 
@@ -104,12 +104,19 @@ public class UserService {
                     throw new BadRequestException("Email is already used");
                 });
 
+        accountRepository.findByUsername(request.getUsername())
+                .filter(existing -> !existing.getId().equals(account.getId()))
+                .ifPresent(existing -> {
+                    throw new BadRequestException("Username is already used");
+                });
+
         SchoolClass schoolClass = null;
         if (request.getClassId() != null) {
             schoolClass = classRepository.findById(request.getClassId())
                     .orElseThrow(() -> new ResourceNotFoundException("Class was not found"));
         }
 
+        account.setUsername(request.getUsername());
         account.setEmail(request.getEmail());
         account.setDisplayName(request.getFullName());
         account.setRole(request.getRole());
@@ -119,7 +126,7 @@ public class UserService {
         user.setFullName(request.getFullName());
         user.setPassportData(request.getPassportData());
         user.setEntranceExamScore(request.getEntranceExamScore());
-        user.setContactInfo(request.getContactInfo());
+        user.setContactInfo(contactInfoOrEmail(request.getContactInfo(), request.getEmail()));
         user.setBirthDate(request.getBirthDate());
         user.setSchoolClass(schoolClass);
         user.setActive(request.isActive());
@@ -163,12 +170,19 @@ public class UserService {
     }
 
     private void validateRoleSpecificFields(Role role, Long classId, Integer entranceExamScore) {
-        if (role == Role.STUDENT && classId == null) {
-            throw new BadRequestException("Student account requires a class");
+        if ((role == Role.STUDENT || role == Role.CURATOR) && classId == null) {
+            throw new BadRequestException("Student and curator accounts require a class");
         }
 
         if (role != Role.STUDENT && entranceExamScore != null) {
             throw new BadRequestException("Entrance exam score is allowed only for students");
         }
+    }
+
+    private String contactInfoOrEmail(String contactInfo, String email) {
+        if (contactInfo != null && !contactInfo.isBlank()) {
+            return contactInfo;
+        }
+        return email;
     }
 }

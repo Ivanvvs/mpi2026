@@ -4,6 +4,7 @@ import com.exam.auth.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
@@ -11,6 +12,10 @@ public class UpdateUserRequest {
 
     @NotBlank
     private String fullName;
+
+    @NotBlank
+    @Size(min = 3, max = 50)
+    private String username;
 
     @Email
     @NotBlank
@@ -37,6 +42,14 @@ public class UpdateUserRequest {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getEmail() {

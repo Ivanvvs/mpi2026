@@ -38,6 +38,7 @@ export function useSchoolApp() {
     registerForm,
     confirmPassword,
     sendCredentials,
+    userSaveSuccess,
     examForm,
     examQuestionsText,
     answerDrafts,
@@ -134,6 +135,7 @@ export function useSchoolApp() {
     expulsionCandidate,
     classes,
     loading,
+    userSaveSuccess,
     loadUsers,
     setMessage
   })
@@ -272,6 +274,7 @@ export function useSchoolApp() {
     registerForm,
     confirmPassword,
     sendCredentials,
+    userSaveSuccess,
     examForm,
     examQuestionsText,
     answerDrafts,
