@@ -155,21 +155,19 @@ public class UserService {
     }
 
     private void validateRegisterRequest(RegisterUserRequest request) {
-        if (request.getRole() == Role.STUDENT && request.getClassId() == null) {
-            throw new BadRequestException("Student account requires a class");
-        }
-
-        if (request.getRole() != Role.STUDENT && request.getEntranceExamScore() != null) {
-            throw new BadRequestException("Entrance exam score is allowed only for students");
-        }
+        validateRoleSpecificFields(request.getRole(), request.getClassId(), request.getEntranceExamScore());
     }
 
     private void validateUpdateRequest(UpdateUserRequest request) {
-        if (request.getRole() == Role.STUDENT && request.getClassId() == null) {
+        validateRoleSpecificFields(request.getRole(), request.getClassId(), request.getEntranceExamScore());
+    }
+
+    private void validateRoleSpecificFields(Role role, Long classId, Integer entranceExamScore) {
+        if (role == Role.STUDENT && classId == null) {
             throw new BadRequestException("Student account requires a class");
         }
 
-        if (request.getRole() != Role.STUDENT && request.getEntranceExamScore() != null) {
+        if (role != Role.STUDENT && entranceExamScore != null) {
             throw new BadRequestException("Entrance exam score is allowed only for students");
         }
     }

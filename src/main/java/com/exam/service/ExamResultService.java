@@ -6,13 +6,11 @@ import com.exam.dto.ExamSessionDTO;
 import com.exam.dto.GradeExamRequest;
 import com.exam.dto.StudentScoreRequest;
 import com.exam.exception.BadRequestException;
-import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
 import com.exam.model.ExamStatus;
 import com.exam.model.SchoolClass;
-import com.exam.model.User;
 import com.exam.repository.ExamResultRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
@@ -35,7 +33,7 @@ public class ExamResultService {
     private final ViolationRepository violationRepository;
     private final SchoolClassRepository classRepository;
     private final ExamRealtimePublisher realtimePublisher;
-    private final CurrentUserService currentUserService;
+    private final AccessControlService accessControl;
 
     public ExamResultService(
             ExamLifecycleService examLifecycleService,
@@ -44,7 +42,7 @@ public class ExamResultService {
             ViolationRepository violationRepository,
             SchoolClassRepository classRepository,
             ExamRealtimePublisher realtimePublisher,
-            CurrentUserService currentUserService
+            AccessControlService accessControl
     ) {
         this.examLifecycleService = examLifecycleService;
         this.userRepository = userRepository;
@@ -52,7 +50,7 @@ public class ExamResultService {
         this.violationRepository = violationRepository;
         this.classRepository = classRepository;
         this.realtimePublisher = realtimePublisher;
-        this.currentUserService = currentUserService;
+        this.accessControl = accessControl;
     }
 
     @Transactional
@@ -132,22 +130,14 @@ public class ExamResultService {
     }
 
     private void assertCanGrade(ExamSession session) {
-        User user = currentUserService.getProfile();
-        if (user.getAccount() != null
-                && user.getAccount().getRole() == Role.EXAMINER
-                && session.getCreatedBy() != null
-                && session.getCreatedBy().getId().equals(user.getAccount().getId())) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot grade this exam");
+        accessControl.require(
+                accessControl.hasRole(Role.EXAMINER) && accessControl.owns(session.getCreatedBy()),
+                "Current user cannot grade this exam"
+        );
     }
 
     private void assertCanViewStudentResults(Long studentId) {
-        User user = currentUserService.getProfile();
-        Role role = user.getAccount() == null ? null : user.getAccount().getRole();
-        if (role == Role.ADMIN || user.getId().equals(studentId)) {
-            return;
-        }
-        throw new ForbiddenException("Current user cannot access results for this student");
+        boolean allowed = accessControl.hasRole(Role.ADMIN) || accessControl.isCurrentProfile(studentId);
+        accessControl.require(allowed, "Current user cannot access results for this student");
     }
 }
