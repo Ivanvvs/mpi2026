@@ -11,9 +11,12 @@ import com.exam.repository.ExamSessionRepository;
 import com.exam.repository.QuestionRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -24,6 +27,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ExamSessionRepository examSessionRepository;
     private final QuestionRepository questionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final String demoPassword;
 
     public DataInitializer(
             AppUserRepository userRepository,
@@ -31,7 +35,8 @@ public class DataInitializer implements CommandLineRunner {
             UserRepository domainUserRepository,
             ExamSessionRepository examSessionRepository,
             QuestionRepository questionRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            @Value("${demo.default-password:}") String demoPassword
     ) {
         this.userRepository = userRepository;
         this.classRepository = classRepository;
@@ -39,6 +44,9 @@ public class DataInitializer implements CommandLineRunner {
         this.examSessionRepository = examSessionRepository;
         this.questionRepository = questionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.demoPassword = demoPassword == null || demoPassword.isBlank()
+                ? UUID.randomUUID().toString()
+                : demoPassword;
     }
 
     @Override
@@ -69,7 +77,7 @@ public class DataInitializer implements CommandLineRunner {
                 .orElseGet(() -> userRepository.save(new AppUser(
                     username,
                     email,
-                    passwordEncoder.encode("1234"),
+                    passwordEncoder.encode(demoPassword),
                     displayName,
                     role
             )));
