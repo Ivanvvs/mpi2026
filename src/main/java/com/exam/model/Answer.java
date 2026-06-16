@@ -1,21 +1,15 @@
 package com.exam.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Entity
 @Table(name = "answers")
-public class Answer {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private Long sessionId;
-
-    private Long userId;
+public class Answer extends SessionUserEntity {
 
     private Long questionId;
 
@@ -30,30 +24,6 @@ public class Answer {
 
     public Answer() {
         // Required by JPA.
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
     }
 
     public Long getQuestionId() {
