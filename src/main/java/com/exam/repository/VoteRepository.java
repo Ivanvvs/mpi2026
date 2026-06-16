@@ -9,7 +9,6 @@ import java.util.List;
 @Repository
 public interface VoteRepository extends JpaRepository<Vote, Long> {
 
-    List<Vote> findBySessionId(Long sessionId);
     List<Vote> findByVotingId(Long votingId);
     boolean existsByVotingIdAndAnonymousVoterHash(Long votingId, String anonymousVoterHash);
 }

@@ -9,7 +9,6 @@ import com.exam.model.SecretVoting;
 import com.exam.model.VotingOption;
 import com.exam.service.VotingService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,20 +19,10 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class VotingController {
 
-    @Autowired
-    private VotingService votingService;
+    private final VotingService votingService;
 
-    @PostMapping("/{sessionId}")
-    public Vote vote(
-            @PathVariable Long sessionId,
-            @RequestBody Vote vote
-    ) {
-        return votingService.submitVote(sessionId, vote);
-    }
-
-    @GetMapping("/{sessionId}/results")
-    public Object results(@PathVariable Long sessionId) {
-        return votingService.getLegacyResults(sessionId);
+    public VotingController(VotingService votingService) {
+        this.votingService = votingService;
     }
 
     @PostMapping("/secret")

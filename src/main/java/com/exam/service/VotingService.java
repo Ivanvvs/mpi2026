@@ -123,7 +123,6 @@ public class VotingService {
 
         Vote vote = new Vote();
         vote.setVotingId(votingId);
-        vote.setSessionId(votingId);
         vote.setEncryptedValue(encodeVote(option.getId()));
         vote.setAnonymousVoterHash(hash(votingId + ":" + student.getId()));
         voteRepository.save(vote);
@@ -223,13 +222,6 @@ public class VotingService {
         return results;
     }
 
-    public Vote submitVote(Long sessionId, Vote vote) {
-        vote.setSessionId(sessionId);
-        vote.setVotingId(sessionId);
-        vote.setEncryptedValue(Base64.getEncoder().encodeToString(vote.getEncryptedValue().getBytes()));
-        return voteRepository.save(vote);
-    }
-
     @Transactional
     public Vote submitCurrentUserVote(Long votingId, Long optionId) {
         User user = currentDomainUser();
@@ -237,10 +229,6 @@ public class VotingService {
         request.setStudentId(user.getId());
         request.setOptionId(optionId);
         return submitVote(votingId, request);
-    }
-
-    public List<Vote> getLegacyResults(Long sessionId) {
-        return voteRepository.findBySessionId(sessionId);
     }
 
     private String encodeVote(Long optionId) {

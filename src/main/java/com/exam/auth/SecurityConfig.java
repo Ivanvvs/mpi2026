@@ -74,7 +74,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/vote/secret/my").hasAnyRole("STUDENT", "CURATOR", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/vote/secret/*/results").hasAnyRole("CURATOR", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/vote/secret/**").hasAnyRole("STUDENT", "CURATOR", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/vote/*/results").hasAnyRole("CURATOR", "ADMIN")
 
                         .requestMatchers("/student/**").hasAnyRole("STUDENT", "ADMIN")
                         .requestMatchers("/curator/**").hasAnyRole("CURATOR", "ADMIN")
