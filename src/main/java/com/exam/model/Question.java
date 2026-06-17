@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "questions")
-public class Question {
+public class Question extends QuestionFields {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -12,11 +12,9 @@ public class Question {
 
     private Long sessionId;
 
-    private String text;
-
-    private String type; // TEXT / TEST
-
-    public Question() {}
+    public Question() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;
@@ -34,19 +32,7 @@ public class Question {
         this.sessionId = sessionId;
     }
 
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public String getType() {
-        return type;
-    }
-
     public void setType(String type) {
-        this.type = type;
+        setType(QuestionType.valueOf(type));
     }
 }

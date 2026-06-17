@@ -5,7 +5,9 @@ public class UserDTO {
     private String username;
     private String role;
 
-    public UserDTO() {}
+    public UserDTO() {
+        // Required by JSON deserialization.
+    }
 
     public String getUsername() {
         return username;

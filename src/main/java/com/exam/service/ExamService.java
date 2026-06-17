@@ -1,45 +1,108 @@
 package com.exam.service;
 
+import com.exam.dto.CreateExamRequest;
+import com.exam.dto.ExamDashboardResponse;
+import com.exam.dto.ExamDetailsResponse;
+import com.exam.dto.GradeExamRequest;
+import com.exam.model.Answer;
+import com.exam.model.ExamAttempt;
+import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
-import com.exam.repository.ExamSessionRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.model.Question;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class ExamService {
 
-    @Autowired
-    private ExamSessionRepository repository;
+    private final ExamLifecycleService lifecycleService;
+    private final ExamParticipationService participationService;
+    private final ExamResultService resultService;
 
-    public ExamSession createSession(ExamSession session) {
-        session.setActive(false);
-        return repository.save(session);
+    public ExamService(
+            ExamLifecycleService lifecycleService,
+            ExamParticipationService participationService,
+            ExamResultService resultService
+    ) {
+        this.lifecycleService = lifecycleService;
+        this.participationService = participationService;
+        this.resultService = resultService;
+    }
+
+    public ExamSession createExam(CreateExamRequest request) {
+        return lifecycleService.createExam(request);
     }
 
     public ExamSession startSession(Long id) {
-        ExamSession session = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
-
-        session.setActive(true);
-        session.setStartTime(LocalDateTime.now());
-
-        return repository.save(session);
+        return lifecycleService.startSession(id);
     }
 
     public ExamSession endSession(Long id) {
-        ExamSession session = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
-
-        session.setActive(false);
-        session.setEndTime(LocalDateTime.now());
-
-        return repository.save(session);
+        return lifecycleService.endSession(id);
     }
 
     public ExamSession getSession(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
+        return lifecycleService.getSession(id);
+    }
+
+    public List<ExamSession> getExams() {
+        return lifecycleService.getExams();
+    }
+
+    public List<ExamSession> getExamsForCurrentUser() {
+        return lifecycleService.getExamsForCurrentUser();
+    }
+
+    public List<ExamSession> getExamsForClass(Long classId) {
+        return lifecycleService.getExamsForClass(classId);
+    }
+
+    public List<Question> getQuestions(Long sessionId) {
+        return participationService.getQuestions(sessionId);
+    }
+
+    public Answer saveAnswer(Long sessionId, Long studentId, Long questionId, String text, boolean finalSubmitted) {
+        return participationService.saveAnswer(sessionId, studentId, questionId, text, finalSubmitted);
+    }
+
+    public Answer saveCurrentUserAnswer(Long sessionId, Long questionId, String text, boolean finalSubmitted) {
+        return participationService.saveCurrentUserAnswer(sessionId, questionId, text, finalSubmitted);
+    }
+
+    public ExamAttempt submitCurrentUserAttempt(Long sessionId) {
+        return participationService.submitCurrentUserAttempt(sessionId);
+    }
+
+    public List<Answer> getAnswers(Long sessionId) {
+        return participationService.getAnswers(sessionId);
+    }
+
+    public List<Answer> getStudentAnswers(Long sessionId, Long studentId) {
+        return participationService.getStudentAnswers(sessionId, studentId);
+    }
+
+    public ExamDetailsResponse getDetails(Long sessionId) {
+        return participationService.getDetails(sessionId);
+    }
+
+    public List<ExamResult> gradeExam(Long sessionId, GradeExamRequest request) {
+        return resultService.gradeExam(sessionId, request);
+    }
+
+    public List<ExamResult> getResults(Long sessionId) {
+        return resultService.getResults(sessionId);
+    }
+
+    public List<ExamResult> getStudentResults(Long studentId) {
+        return resultService.getStudentResults(studentId);
+    }
+
+    public ExamDashboardResponse getDashboard() {
+        return resultService.getDashboard();
+    }
+
+    public void finishExpiredExams() {
+        lifecycleService.finishExpiredExams();
     }
 }

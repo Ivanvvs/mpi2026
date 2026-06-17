@@ -1,11 +1,18 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
     url: jdbc:postgresql://localhost:5432/examdb
-    username: ksu
-    password:
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    baseline-on-migrate: true
+
+server:
+  port: 8081

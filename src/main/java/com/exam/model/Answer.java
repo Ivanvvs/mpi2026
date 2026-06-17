@@ -1,48 +1,29 @@
 package com.exam.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Entity
 @Table(name = "answers")
-public class Answer {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private Long sessionId;
-
-    private Long userId;
+public class Answer extends SessionUserEntity {
 
     private Long questionId;
 
     @Column(length = 2000)
     private String text;
 
-    public Answer() {}
+    private LocalDateTime savedAt = nowUtc();
 
-    public Long getId() {
-        return id;
-    }
+    private Integer score;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    private boolean finalSubmitted;
 
-    public Long getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public Answer() {
+        // Required by JPA.
     }
 
     public Long getQuestionId() {
@@ -59,5 +40,29 @@ public class Answer {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public LocalDateTime getSavedAt() {
+        return savedAt;
+    }
+
+    public void setSavedAt(LocalDateTime savedAt) {
+        this.savedAt = savedAt;
+    }
+
+    public Integer getScore() {
+        return score;
+    }
+
+    public void setScore(Integer score) {
+        this.score = score;
+    }
+
+    public boolean isFinalSubmitted() {
+        return finalSubmitted;
+    }
+
+    public void setFinalSubmitted(boolean finalSubmitted) {
+        this.finalSubmitted = finalSubmitted;
     }
 }

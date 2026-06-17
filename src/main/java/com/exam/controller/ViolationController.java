@@ -1,27 +1,34 @@
 package com.exam.controller;
 
-import com.exam.model.Violation;
+import com.exam.dto.ViolationDTO;
+import com.exam.dto.ViolationRequest;
 import com.exam.service.ViolationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/violations")
-@CrossOrigin(origins = "*")
 public class ViolationController {
 
-    @Autowired
-    private ViolationService violationService;
+    private final ViolationService violationService;
+
+    public ViolationController(ViolationService violationService) {
+        this.violationService = violationService;
+    }
 
     @PostMapping("/report")
-    public Violation report(@RequestBody Violation violation) {
-        return violationService.reportViolation(violation);
+    public ViolationDTO report(@RequestBody ViolationRequest request) {
+        return ViolationDTO.from(violationService.reportViolation(request.toViolation()));
+    }
+
+    @PostMapping("/report/me")
+    public ViolationDTO reportMe(@RequestBody ViolationRequest request) {
+        return ViolationDTO.from(violationService.reportCurrentUserViolation(request.toViolation()));
     }
 
     @GetMapping("/session/{sessionId}")
-    public List<Violation> getBySession(@PathVariable Long sessionId) {
-        return violationService.getViolationsBySession(sessionId);
+    public List<ViolationDTO> getBySession(@PathVariable Long sessionId) {
+        return violationService.getViolationsBySession(sessionId).stream().map(ViolationDTO::from).toList();
     }
 }

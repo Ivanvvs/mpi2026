@@ -10,4 +10,6 @@ import java.util.List;
 public interface ViolationRepository extends JpaRepository<Violation, Long> {
 
     List<Violation> findBySessionId(Long sessionId);
+    List<Violation> findByUserId(Long userId);
+    List<Violation> findBySessionIdAndUserId(Long sessionId, Long userId);
 }

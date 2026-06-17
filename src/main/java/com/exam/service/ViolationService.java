@@ -1,28 +1,48 @@
 package com.exam.service;
 
 import com.exam.model.Violation;
+import com.exam.model.User;
 import com.exam.repository.ViolationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.exam.util.DateTimeUtils.nowUtc;
 
 @Service
 public class ViolationService {
 
-    @Autowired
-    private ViolationRepository repository;
+    private final ViolationRepository repository;
+    private final CurrentUserService currentUserService;
+
+    public ViolationService(
+            ViolationRepository repository,
+            CurrentUserService currentUserService
+    ) {
+        this.repository = repository;
+        this.currentUserService = currentUserService;
+    }
 
     public Violation reportViolation(Violation violation) {
-        violation.setTime(LocalDateTime.now());
+        if (violation.getTime() == null) {
+            violation.setTime(nowUtc());
+        }
+        if (violation.getType() == null || violation.getType().isBlank()) {
+            violation.setType("EXAM_RULE_VIOLATION");
+        }
+        if (violation.getPointsPenalty() == null) {
+            violation.setPointsPenalty(0);
+        }
         return repository.save(violation);
     }
 
+    public Violation reportCurrentUserViolation(Violation violation) {
+        User user = currentUserService.getProfile();
+        violation.setUserId(user.getId());
+        return reportViolation(violation);
+    }
+
     public List<Violation> getViolationsBySession(Long sessionId) {
-        return repository.findAll()
-                .stream()
-                .filter(v -> v.getSessionId().equals(sessionId))
-                .toList();
+        return repository.findBySessionId(sessionId);
     }
 }

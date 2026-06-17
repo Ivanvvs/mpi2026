@@ -3,18 +3,28 @@ package com.exam.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "votes")
+@Table(
+        name = "votes",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"voting_id", "anonymous_voter_hash"})
+)
 public class Vote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long sessionId;
+    @Column(name = "voting_id", nullable = false)
+    private Long votingId;
 
+    @Column(name = "encrypted_value", nullable = false)
     private String encryptedValue;
 
-    public Vote() {}
+    @Column(name = "anonymous_voter_hash", nullable = false)
+    private String anonymousVoterHash;
+
+    public Vote() {
+        // Required by JPA.
+    }
 
     public Long getId() {
         return id;
@@ -24,12 +34,12 @@ public class Vote {
         this.id = id;
     }
 
-    public Long getSessionId() {
-        return sessionId;
+    public Long getVotingId() {
+        return votingId;
     }
 
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
+    public void setVotingId(Long votingId) {
+        this.votingId = votingId;
     }
 
     public String getEncryptedValue() {
@@ -38,5 +48,13 @@ public class Vote {
 
     public void setEncryptedValue(String encryptedValue) {
         this.encryptedValue = encryptedValue;
+    }
+
+    public String getAnonymousVoterHash() {
+        return anonymousVoterHash;
+    }
+
+    public void setAnonymousVoterHash(String anonymousVoterHash) {
+        this.anonymousVoterHash = anonymousVoterHash;
     }
 }
