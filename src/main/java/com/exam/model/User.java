@@ -31,6 +31,9 @@ public class User {
     @JoinColumn(name = "class_id")
     private SchoolClass schoolClass;
 
+    @Column(name = "s_points")
+    private int sPoints;
+
     private boolean active = true;
 
     public User() {
@@ -132,6 +135,14 @@ public class User {
 
     public void setSchoolClass(SchoolClass schoolClass) {
         this.schoolClass = schoolClass;
+    }
+
+    public int getsPoints() {
+        return sPoints;
+    }
+
+    public void setsPoints(int sPoints) {
+        this.sPoints = sPoints;
     }
 
     public boolean isActive() {

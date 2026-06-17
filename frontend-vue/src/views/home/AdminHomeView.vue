@@ -28,7 +28,9 @@
                     <th>Место</th>
                     <th>Класс</th>
                     <th>S-очки</th>
-                    <th>Изменение</th>
+                    <th>Текущий ранг</th>
+                    <th>Новый ранг</th>
+                    <th>Учеников</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -36,13 +38,41 @@
                     <td>{{ index + 1 }}</td>
                     <td>{{ schoolClass.name }}</td>
                     <td>{{ app.formatNumber(schoolClass.sPoints) }}</td>
-                    <td :class="schoolClass.delta >= 0 ? 'positive' : 'negative'">
-                      {{ schoolClass.delta >= 0 ? '+' : '' }}{{ schoolClass.delta }}
-                    </td>
+                    <td>{{ schoolClass.rank }}</td>
+                    <td :class="schoolClass.rankChangeRequired ? 'positive' : ''">{{ schoolClass.proposedRank || schoolClass.rank }}</td>
+                    <td>{{ schoolClass.studentCount ?? '-' }}</td>
                   </tr>
                 </tbody>
               </table>
-              <button class="secondary wide-action">Обновить ранги</button>
+              <div class="quick-actions">
+                <button class="secondary wide-action" @click="app.refreshRankPreview">Обновить ранги</button>
+                <button
+                  v-if="app.rankPreviewVisible && app.pendingRankUpdates.length"
+                  class="primary wide-action"
+                  @click="app.confirmRankUpdates"
+                >
+                  Подтвердить ранги
+                </button>
+              </div>
+              <p v-if="app.rankPreviewVisible && !app.pendingRankUpdates.length" class="muted">Изменений рангов не требуется.</p>
+              <table v-if="app.rankPreviewVisible && app.pendingRankUpdates.length" class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>Класс</th>
+                    <th>S-очки</th>
+                    <th>Было</th>
+                    <th>Станет</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="schoolClass in app.pendingRankUpdates" :key="schoolClass.id">
+                    <td>{{ schoolClass.name }}</td>
+                    <td>{{ app.formatNumber(schoolClass.sPoints) }}</td>
+                    <td>{{ schoolClass.rank }}</td>
+                    <td class="positive">{{ schoolClass.proposedRank }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </section>
 
             <aside class="admin-side">

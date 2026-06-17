@@ -7,6 +7,7 @@ import com.exam.dto.ExamAttemptResponse;
 import com.exam.dto.ExamDetailsResponse;
 import com.exam.dto.ExamResultResponse;
 import com.exam.dto.ExamSessionDTO;
+import com.exam.dto.ExamStudentAttemptResponse;
 import com.exam.dto.ViolationDTO;
 import com.exam.dto.QuestionResponse;
 import com.exam.exception.BadRequestException;
@@ -115,7 +116,7 @@ public class ExamParticipationService {
         answer.setFinalSubmitted(finalSubmitted);
 
         Answer saved = answerRepository.save(answer);
-        realtimePublisher.publish(sessionId, "ANSWER_SAVED", "Student answer has been saved");
+        realtimePublisher.publish(sessionId, studentId, "ANSWER_SAVED", "Student answer has been saved");
         return saved;
     }
 
@@ -142,7 +143,7 @@ public class ExamParticipationService {
                 answer.setFinalSubmitted(true);
                 answerRepository.save(answer);
             });
-            realtimePublisher.publish(sessionId, "ATTEMPT_SUBMITTED", "Student attempt has been submitted");
+            realtimePublisher.publish(sessionId, user.getId(), "ATTEMPT_SUBMITTED", "Student attempt has been submitted");
         }
         return attempt;
     }
@@ -158,6 +159,7 @@ public class ExamParticipationService {
         List<Answer> answers = List.of();
         var results = List.copyOf(examResultService.getResultsForDetails(sessionId, null));
         List<com.exam.model.Violation> violations = List.of();
+        List<ExamStudentAttemptResponse> attempts = List.of();
 
         if (student) {
             domainUser = currentUserService.getProfile();
@@ -172,6 +174,9 @@ public class ExamParticipationService {
             answers = getAnswers(sessionId);
             results = examResultService.getResultsForDetails(sessionId, null);
             violations = violationRepository.findBySessionId(sessionId);
+            attempts = attemptRepository.findBySessionId(sessionId).stream()
+                    .map(ExamStudentAttemptResponse::from)
+                    .toList();
         } else {
             results = List.of();
         }
@@ -184,7 +189,8 @@ public class ExamParticipationService {
                 answers.stream().map(AnswerDTO::from).toList(),
                 results.stream().map(ExamResultResponse::from).toList(),
                 violations.stream().map(ViolationDTO::from).toList(),
-                attempt
+                attempt,
+                attempts
         );
     }
 

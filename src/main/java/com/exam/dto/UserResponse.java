@@ -20,6 +20,7 @@ public class UserResponse {
     private Integer entranceExamScore;
     private String contactInfo;
     private LocalDate birthDate;
+    private int sPoints;
     private boolean active;
     private LocalDateTime createdAt;
 
@@ -32,6 +33,7 @@ public class UserResponse {
         response.entranceExamScore = user.getEntranceExamScore();
         response.contactInfo = user.getContactInfo();
         response.birthDate = user.getBirthDate();
+        response.sPoints = user.getsPoints();
 
         if (user.getAccount() != null) {
             response.accountId = user.getAccount().getId();
@@ -99,6 +101,10 @@ public class UserResponse {
 
     public boolean isActive() {
         return active;
+    }
+
+    public int getsPoints() {
+        return sPoints;
     }
 
     public LocalDateTime getCreatedAt() {

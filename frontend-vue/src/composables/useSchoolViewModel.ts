@@ -41,8 +41,13 @@ export function useSchoolViewModel(options: UseSchoolViewModelOptions) {
   const rankedClasses = computed<RankedClass[]>(() => {
     return classes.value
       .map((schoolClass) => ({
+        id: schoolClass.id,
         name: schoolClass.name,
+        rank: schoolClass.rank,
+        proposedRank: schoolClass.proposedRank,
         sPoints: schoolClass.sPoints,
+        studentCount: schoolClass.studentCount,
+        rankChangeRequired: schoolClass.rankChangeRequired,
         delta: 0
       }))
       .sort((left, right) => right.sPoints - left.sPoints)

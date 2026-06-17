@@ -24,7 +24,10 @@ export interface SchoolClass {
   id: number
   name: string
   rank: string
+  proposedRank?: string
   sPoints: number
+  studentCount?: number
+  rankChangeRequired?: boolean
 }
 
 export interface UserResponse {
@@ -40,6 +43,7 @@ export interface UserResponse {
   entranceExamScore?: number | null
   contactInfo?: string | null
   birthDate?: string | null
+  sPoints?: number
   active: boolean
   createdAt?: string | null
 }
@@ -61,6 +65,8 @@ export interface Question {
   id: number
   orderIndex: number
   text: string
+  correctAnswer?: string | null
+  maxScore?: number | null
 }
 
 export interface Answer {
@@ -72,6 +78,14 @@ export interface Answer {
 }
 
 export interface ExamAttempt {
+  started: boolean
+  submitted: boolean
+  startedAt?: string | null
+  submittedAt?: string | null
+}
+
+export interface ExamStudentAttempt {
+  studentId: number
   started: boolean
   submitted: boolean
   startedAt?: string | null
@@ -93,6 +107,7 @@ export interface ExamDetails {
   results: ExamResult[]
   violations?: unknown[]
   attempt?: ExamAttempt
+  attempts?: ExamStudentAttempt[]
 }
 
 export interface SecretVoting {
@@ -123,10 +138,21 @@ export interface RealtimeEvent {
   id: string
   type: string
   time: string
+  userId?: number | null
+  userName?: string
+}
+
+export interface AdminDashboardResponse {
+  classes: SchoolClass[]
 }
 
 export interface RankedClass {
+  id?: number
   name: string
+  rank?: string
+  proposedRank?: string
   sPoints: number
+  studentCount?: number
+  rankChangeRequired?: boolean
   delta: number
 }

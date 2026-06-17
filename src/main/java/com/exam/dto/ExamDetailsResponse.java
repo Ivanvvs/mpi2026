@@ -10,6 +10,7 @@ public class ExamDetailsResponse {
     private List<ExamResultResponse> results;
     private List<ViolationDTO> violations;
     private ExamAttemptResponse attempt;
+    private List<ExamStudentAttemptResponse> attempts;
 
     public ExamDetailsResponse(
             ExamSessionDTO exam,
@@ -17,7 +18,8 @@ public class ExamDetailsResponse {
             List<AnswerDTO> answers,
             List<ExamResultResponse> results,
             List<ViolationDTO> violations,
-            ExamAttemptResponse attempt
+            ExamAttemptResponse attempt,
+            List<ExamStudentAttemptResponse> attempts
     ) {
         this.exam = exam;
         this.questions = questions;
@@ -25,6 +27,7 @@ public class ExamDetailsResponse {
         this.results = results;
         this.violations = violations;
         this.attempt = attempt;
+        this.attempts = attempts;
     }
 
     public ExamSessionDTO getExam() {
@@ -49,5 +52,9 @@ public class ExamDetailsResponse {
 
     public ExamAttemptResponse getAttempt() {
         return attempt;
+    }
+
+    public List<ExamStudentAttemptResponse> getAttempts() {
+        return attempts;
     }
 }

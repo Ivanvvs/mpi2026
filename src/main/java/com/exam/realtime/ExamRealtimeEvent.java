@@ -7,6 +7,7 @@ import static com.exam.util.DateTimeUtils.nowUtc;
 public class ExamRealtimeEvent {
 
     private Long examId;
+    private Long userId;
     private String type;
     private String message;
     private LocalDateTime occurredAt = nowUtc();
@@ -21,12 +22,25 @@ public class ExamRealtimeEvent {
         this.message = message;
     }
 
+    public ExamRealtimeEvent(Long examId, Long userId, String type, String message) {
+        this(examId, type, message);
+        this.userId = userId;
+    }
+
     public Long getExamId() {
         return examId;
     }
 
     public void setExamId(Long examId) {
         this.examId = examId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getType() {

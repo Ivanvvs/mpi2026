@@ -30,6 +30,9 @@ public class ExamResult {
 
     private int finalScore;
 
+    @Column(name = "awarded_s_points")
+    private int awardedSPoints;
+
     private Integer rankPlace;
 
     private LocalDateTime gradedAt = nowUtc();
@@ -80,6 +83,14 @@ public class ExamResult {
 
     public void setFinalScore(int finalScore) {
         this.finalScore = finalScore;
+    }
+
+    public int getAwardedSPoints() {
+        return awardedSPoints;
+    }
+
+    public void setAwardedSPoints(int awardedSPoints) {
+        this.awardedSPoints = awardedSPoints;
     }
 
     public Integer getRankPlace() {
