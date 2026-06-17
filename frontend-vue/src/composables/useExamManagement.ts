@@ -26,7 +26,6 @@ interface ExamFormState {
   scheduledStartTime: string
   endsAt: string
   description: string
-  questionCount: number
 }
 
 interface ViolationFormState {
@@ -219,10 +218,6 @@ export function useExamManagement(options: UseExamManagementOptions) {
         throw new Error('Прикрепите .txt файл с заданиями')
       }
 
-      if (Number(examForm.questionCount) !== questions.length) {
-        throw new Error(`Количество вопросов в форме (${examForm.questionCount}) не совпадает с файлом (${questions.length})`)
-      }
-
       await api<ExamSession>('/exam/session', {
         method: 'POST',
         body: JSON.stringify({
@@ -265,9 +260,6 @@ export function useExamManagement(options: UseExamManagementOptions) {
       examQuestionsText.value = await file.text()
       examQuestionFileName.value = file.name
       const parsedCount = parseExamQuestionsText(examQuestionsText.value).length
-      if (parsedCount > 0) {
-        examForm.questionCount = parsedCount
-      }
       setMessage(`Файл с заданиями загружен: ${parsedCount}`, 'success')
     } catch (error) {
       examQuestionsText.value = ''
@@ -283,8 +275,7 @@ export function useExamManagement(options: UseExamManagementOptions) {
       classId: null,
       scheduledStartTime: '',
       endsAt: '',
-      description: '',
-      questionCount: 1
+      description: ''
     })
     examQuestionsText.value = ''
     examQuestionFileName.value = ''
