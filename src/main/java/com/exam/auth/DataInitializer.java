@@ -51,28 +51,37 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        seedClass("10A", ClassRank.A, 2120);
-        seedClass("10B", ClassRank.B, 4310);
-        seedClass("11A", ClassRank.A, 5240);
-        seedClass("11B", ClassRank.C, 2580);
+        SchoolClass class10A = seedClass("10A", ClassRank.A);
+        SchoolClass class10B = seedClass("10B", ClassRank.B);
+        SchoolClass class11A = seedClass("11A", ClassRank.A);
+        SchoolClass class11B = seedClass("11B", ClassRank.C);
 
-        SchoolClass defaultClass = classRepository.findByName("10A").orElse(null);
+        seedUser("student", "student@school.local", "Student Demo", Role.STUDENT, class10A, 850);
+        seedUser("curator", "curator@school.local", "Curator Demo", Role.CURATOR, class10A, 0);
+        AppUser examiner = seedUser("examiner", "examiner@school.local", "Examiner Demo", Role.EXAMINER, null, 0);
+        seedUser("admin", "admin@school.local", "Admin Demo", Role.ADMIN, null, 0);
 
-        seedUser("student", "student@school.local", "Student Demo", Role.STUDENT, defaultClass);
-        seedUser("curator", "curator@school.local", "Curator Demo", Role.CURATOR, defaultClass);
-        AppUser examiner = seedUser("examiner", "examiner@school.local", "Examiner Demo", Role.EXAMINER, null);
-        seedUser("admin", "admin@school.local", "Admin Demo", Role.ADMIN, null);
+        seedUser("hirata", "hirata@school.local", "Хирата Ёскэ", Role.STUDENT, class10B, 920);
+        seedUser("karuizawa", "karuizawa@school.local", "Каруидзава Кэй", Role.STUDENT, class10B, 760);
+        seedUser("sakayanagi", "sakayanagi@school.local", "Сакаянаги Арису", Role.STUDENT, class11A, 990);
+        seedUser("hashimoto", "hashimoto@school.local", "Хасимото Масаюки", Role.STUDENT, class11A, 870);
+        seedUser("ryuen", "ryuen@school.local", "Рюэн Какэру", Role.STUDENT, class11B, 800);
+        seedUser("ishizaki", "ishizaki@school.local", "Исидзаки Дайти", Role.STUDENT, class11B, 640);
 
-        seedDemoExam(defaultClass, examiner);
+        recalculateClassBalance(class10A);
+        recalculateClassBalance(class10B);
+        recalculateClassBalance(class11A);
+        recalculateClassBalance(class11B);
+
+        seedDemoExam(class10A, examiner);
     }
 
-    private void seedClass(String name, ClassRank rank, int sPoints) {
-        if (classRepository.findByName(name).isEmpty()) {
-            classRepository.save(new SchoolClass(name, rank, sPoints));
-        }
+    private SchoolClass seedClass(String name, ClassRank rank) {
+        return classRepository.findByName(name)
+                .orElseGet(() -> classRepository.save(new SchoolClass(name, rank, 0)));
     }
 
-    private AppUser seedUser(String username, String email, String displayName, Role role, SchoolClass schoolClass) {
+    private AppUser seedUser(String username, String email, String displayName, Role role, SchoolClass schoolClass, int sPoints) {
         AppUser account = userRepository.findByUsername(username)
                 .orElseGet(() -> userRepository.save(new AppUser(
                     username,
@@ -88,10 +97,16 @@ public class DataInitializer implements CommandLineRunner {
             user.setFullName(displayName);
             user.setContactInfo(email);
             user.setSchoolClass(role == Role.STUDENT || role == Role.CURATOR ? schoolClass : null);
+            user.setsPoints(sPoints);
             domainUserRepository.save(user);
         }
 
         return account;
+    }
+
+    private void recalculateClassBalance(SchoolClass schoolClass) {
+        schoolClass.setsPoints(domainUserRepository.sumSPointsBySchoolClassId(schoolClass.getId()));
+        classRepository.save(schoolClass);
     }
 
     private void seedDemoExam(SchoolClass schoolClass, AppUser examiner) {
