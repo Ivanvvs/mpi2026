@@ -73,8 +73,7 @@ export function createSchoolAppState() {
     classId: null as number | null,
     scheduledStartTime: '',
     endsAt: '',
-    description: '',
-    questionCount: 1
+    description: ''
   })
   const examQuestionsText = ref('')
   const examQuestionFileName = ref('')

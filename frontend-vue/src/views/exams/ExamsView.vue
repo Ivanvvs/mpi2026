@@ -26,7 +26,7 @@
         </label>
         <label>
           <span>Количество вопросов:</span>
-          <input v-model.number="app.examForm.questionCount" type="number" min="1" required />
+          <input :value="app.examQuestionFileName ? app.examQuestionCount : ''" type="text" placeholder="Определяется из файла" readonly />
         </label>
         <label>
           <span>Описание (необязательно):</span>
