@@ -45,8 +45,18 @@ public class VotingLifecycleService {
 
     @Transactional
     public SecretVoting createVoting(CreateVotingRequest request) {
+        assertCanCreateVoting(request.getClassId());
+
         if (request.getOptions().isEmpty()) {
             throw new BadRequestException("Voting must contain at least one option");
+        }
+
+        if (request.getEndsAt() == null) {
+            throw new BadRequestException("Voting end time is required");
+        }
+
+        if (!request.getEndsAt().isAfter(nowUtc())) {
+            throw new BadRequestException("Voting end time must be in the future");
         }
 
         SchoolClass schoolClass = classRepository.findById(request.getClassId())
@@ -148,6 +158,13 @@ public class VotingLifecycleService {
                 && (accessControl.owns(voting.getCreatedBy()) || accessControl.belongsToClass(voting.getSchoolClass())))
                 || (role == Role.STUDENT && accessControl.belongsToClass(voting.getSchoolClass()));
         accessControl.require(allowed, "Current user cannot access this voting");
+    }
+
+    private void assertCanCreateVoting(Long classId) {
+        Role role = accessControl.currentRole();
+        boolean allowed = role == Role.ADMIN
+                || (role == Role.CURATOR && accessControl.belongsToClass(classId));
+        accessControl.require(allowed, "Current user cannot create voting for this class");
     }
 
     private void assertCanManageVoting(SecretVoting voting) {

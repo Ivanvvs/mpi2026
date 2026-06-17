@@ -18,6 +18,7 @@ public class CreateVotingRequest {
     @NotNull
     private Long classId;
 
+    @NotNull
     private LocalDateTime endsAt;
 
     @Valid
