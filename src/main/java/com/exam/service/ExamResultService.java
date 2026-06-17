@@ -10,7 +10,6 @@ import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ExamResult;
 import com.exam.model.ExamSession;
 import com.exam.model.ExamStatus;
-import com.exam.model.SchoolClass;
 import com.exam.model.User;
 import com.exam.repository.ExamResultRepository;
 import com.exam.repository.SchoolClassRepository;
@@ -35,6 +34,8 @@ public class ExamResultService {
     private final SchoolClassRepository classRepository;
     private final ExamRealtimePublisher realtimePublisher;
     private final AccessControlService accessControl;
+    private final SPointService sPointService;
+    private final AdminDashboardService adminDashboardService;
 
     public ExamResultService(
             ExamLifecycleService examLifecycleService,
@@ -43,7 +44,9 @@ public class ExamResultService {
             ViolationRepository violationRepository,
             SchoolClassRepository classRepository,
             ExamRealtimePublisher realtimePublisher,
-            AccessControlService accessControl
+            AccessControlService accessControl,
+            SPointService sPointService,
+            AdminDashboardService adminDashboardService
     ) {
         this.examLifecycleService = examLifecycleService;
         this.userRepository = userRepository;
@@ -52,6 +55,8 @@ public class ExamResultService {
         this.classRepository = classRepository;
         this.realtimePublisher = realtimePublisher;
         this.accessControl = accessControl;
+        this.sPointService = sPointService;
+        this.adminDashboardService = adminDashboardService;
     }
 
     @Transactional
@@ -86,19 +91,13 @@ public class ExamResultService {
                 .toList();
 
         int place = 1;
-        int totalScore = 0;
         for (ExamResult result : results) {
             result.setRankPlace(place++);
-            totalScore += result.getFinalScore();
             resultRepository.save(result);
         }
 
-        if (session.getSchoolClass() != null && !results.isEmpty()) {
-            SchoolClass schoolClass = session.getSchoolClass();
-            int averageScore = totalScore / results.size();
-            schoolClass.setsPoints(schoolClass.getsPoints() + averageScore);
-            classRepository.save(schoolClass);
-        }
+        sPointService.applyExamResults(session, results);
+        adminDashboardService.publishDashboardUpdate();
 
         realtimePublisher.publish(sessionId, "EXAM_GRADED", "Exam results have been saved");
         return resultRepository.findBySessionId(sessionId);

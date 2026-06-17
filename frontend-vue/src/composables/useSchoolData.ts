@@ -1,4 +1,5 @@
 import type {
+  AdminDashboardResponse,
   ExamResult,
   ExamSession,
   Page,
@@ -66,6 +67,12 @@ export function useSchoolData(options: UseSchoolDataOptions) {
   }
 
   async function loadClasses() {
+    if (session.role === 'ADMIN') {
+      const dashboard = await api<AdminDashboardResponse>('/admin/dashboard')
+      classes.value = dashboard.classes
+      return
+    }
+
     classes.value = await api<SchoolClass[]>('/users/classes')
   }
 
@@ -82,13 +89,17 @@ export function useSchoolData(options: UseSchoolDataOptions) {
   }
 
   async function loadMyResults() {
-    if (session.userId) {
-      myResults.value = await api<ExamResult[]>(`/exam/session/students/${session.userId}/results`)
+    if (!session.userId || (session.role !== 'STUDENT' && session.role !== 'ADMIN')) {
+      myResults.value = []
+      return
     }
+
+    myResults.value = await api<ExamResult[]>(`/exam/session/students/${session.userId}/results`)
   }
 
   function openPage(page: Page) {
     currentPage.value = page
+    localStorage.setItem('school-current-page', page)
     setMessage('', 'info')
     if (page === 'results') loadMyResults()
   }

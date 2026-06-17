@@ -50,6 +50,8 @@ public class ExamLifecycleService {
 
     @Transactional
     public ExamSession createExam(CreateExamRequest request) {
+        assertCanCreateExam();
+
         if (request.getQuestions().isEmpty()) {
             throw new BadRequestException("Exam must contain at least one question");
         }
@@ -167,7 +169,7 @@ public class ExamLifecycleService {
             return session;
         }
 
-        LocalDateTime startedAt = session.getStartTime() == null ? session.getScheduledStartTime() : session.getStartTime();
+        LocalDateTime startedAt = session.getScheduledStartTime() == null ? session.getStartTime() : session.getScheduledStartTime();
         if (startedAt == null) {
             return session;
         }
@@ -197,6 +199,13 @@ public class ExamLifecycleService {
         accessControl.require(
                 accessControl.hasRole(Role.EXAMINER) && accessControl.owns(session.getCreatedBy()),
                 "Current user cannot manage this exam"
+        );
+    }
+
+    private void assertCanCreateExam() {
+        accessControl.require(
+                accessControl.hasRole(Role.EXAMINER),
+                "Current user cannot create exam"
         );
     }
 }

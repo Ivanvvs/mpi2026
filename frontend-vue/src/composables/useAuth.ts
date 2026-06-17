@@ -68,7 +68,10 @@ export function useAuth(options: UseAuthOptions) {
 
       Object.assign(session, data)
       if (rememberMe.value) localStorage.setItem('school-session', JSON.stringify(data))
+      localStorage.removeItem('school-selected-exam-id')
+      localStorage.removeItem('school-current-question-index')
       currentPage.value = 'home'
+      localStorage.setItem('school-current-page', 'home')
       await bootstrap()
       setMessage('Вход выполнен', 'success')
     } catch (error) {
@@ -81,6 +84,9 @@ export function useAuth(options: UseAuthOptions) {
   function logout() {
     stompClient.value?.deactivate()
     localStorage.removeItem('school-session')
+    localStorage.removeItem('school-current-page')
+    localStorage.removeItem('school-selected-exam-id')
+    localStorage.removeItem('school-current-question-index')
     Object.assign(session, { token: '', role: 'STUDENT', accountId: null, userId: null, displayName: '' })
     selectedExam.value = null
     selectedVoting.value = null
@@ -98,6 +104,10 @@ export function useAuth(options: UseAuthOptions) {
       }
       Object.assign(session, parsed)
       await bootstrap()
+      const savedPage = localStorage.getItem('school-current-page') as Page | null
+      if (savedPage && menus[parsed.role].some((item) => item.page === savedPage)) {
+        currentPage.value = savedPage
+      }
     } catch {
       localStorage.removeItem('school-session')
       Object.assign(session, { token: '', role: 'STUDENT', accountId: null, userId: null, displayName: '' })

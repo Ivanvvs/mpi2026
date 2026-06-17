@@ -18,4 +18,11 @@ public class ExamRealtimePublisher {
                 new ExamRealtimeEvent(examId, type, message)
         );
     }
+
+    public void publish(Long examId, Long userId, String type, String message) {
+        messagingTemplate.convertAndSend(
+                "/topic/exams/" + examId,
+                new ExamRealtimeEvent(examId, userId, type, message)
+        );
+    }
 }

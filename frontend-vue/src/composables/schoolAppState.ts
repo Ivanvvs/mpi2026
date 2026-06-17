@@ -40,14 +40,17 @@ export function createSchoolAppState() {
   const realtimeEvents = ref<RealtimeEvent[]>([])
   const stompClient = ref<Client | null>(null)
   const currentQuestionIndex = ref(0)
+  const selectedMonitorStudentId = ref<number | null>(null)
   const selectedVoteOptionId = ref<number | null>(null)
   const now = ref(Date.now())
   const examStatusFilter = ref<ExamStatus | 'ALL'>('ALL')
+  const examMonitorTab = ref<'MONITOR' | 'VIOLATIONS' | 'RESULTS'>('MONITOR')
   const votingStatusFilter = ref<VotingStatus | 'ALL'>('ALL')
 
   const userRoleFilter = ref<Role | 'ALL'>('ALL')
   const editingUserId = ref<number | null>(null)
   const expulsionCandidate = ref<UserResponse | null>(null)
+  const rankPreviewVisible = ref(false)
 
   const registerForm = reactive({
     fullName: '',
@@ -66,14 +69,18 @@ export function createSchoolAppState() {
   const userSaveSuccess = ref(false)
 
   const examForm = reactive({
-    title: 'test',
-    subject: 'test',
+    subject: '',
     classId: null as number | null,
-    durationMinutes: 45,
+    scheduledStartTime: '',
+    endsAt: '',
     description: '',
-    scheduledStartTime: ''
+    questionCount: 1
   })
-  const examQuestionsText = ref('1 + 1')
+  const examQuestionsText = ref('')
+  const examQuestionFileName = ref('')
+  const examFileInputKey = ref(0)
+  const examCreateSuccess = ref(false)
+  const answerSaveSuccess = ref(false)
   const answerDrafts = reactive<Record<number, string>>({})
   const gradeForm = reactive<Record<number, number>>({})
 
@@ -107,19 +114,26 @@ export function createSchoolAppState() {
     realtimeEvents,
     stompClient,
     currentQuestionIndex,
+    selectedMonitorStudentId,
     selectedVoteOptionId,
     now,
     examStatusFilter,
+    examMonitorTab,
     votingStatusFilter,
     userRoleFilter,
     editingUserId,
     expulsionCandidate,
+    rankPreviewVisible,
     registerForm,
     confirmPassword,
     sendCredentials,
     userSaveSuccess,
     examForm,
     examQuestionsText,
+    examQuestionFileName,
+    examFileInputKey,
+    examCreateSuccess,
+    answerSaveSuccess,
     answerDrafts,
     gradeForm,
     votingForm,

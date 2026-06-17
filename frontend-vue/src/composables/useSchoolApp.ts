@@ -1,9 +1,10 @@
-﻿import { onMounted, onUnmounted, reactive } from 'vue'
+﻿import { onMounted, onUnmounted, reactive, watch } from 'vue'
 import { createSchoolApiClient } from './schoolApiClient'
 import { formatDateTime, formatNumber, totalVotes } from './schoolAppFormatters'
 import { roleLabel, statusLabel, userFilters } from './schoolAppLabels'
 import { createSchoolAppState } from './schoolAppState'
 import { useAuth } from './useAuth'
+import { useAdminDashboard } from './useAdminDashboard'
 import { useExamManagement } from './useExamManagement'
 import { useSchoolData } from './useSchoolData'
 import { useSchoolViewModel } from './useSchoolViewModel'
@@ -28,19 +29,26 @@ export function useSchoolApp() {
     realtimeEvents,
     stompClient,
     currentQuestionIndex,
+    selectedMonitorStudentId,
     selectedVoteOptionId,
     now,
     examStatusFilter,
+    examMonitorTab,
     votingStatusFilter,
     userRoleFilter,
     editingUserId,
     expulsionCandidate,
+    rankPreviewVisible,
     registerForm,
     confirmPassword,
     sendCredentials,
     userSaveSuccess,
     examForm,
     examQuestionsText,
+    examQuestionFileName,
+    examFileInputKey,
+    examCreateSuccess,
+    answerSaveSuccess,
     answerDrafts,
     gradeForm,
     votingForm,
@@ -141,15 +149,38 @@ export function useSchoolApp() {
   })
 
   const {
+    pendingRankUpdates,
+    refreshRankPreview,
+    confirmRankUpdates,
+    connectAdminDashboardSocket,
+    disconnectAdminDashboardSocket
+  } = useAdminDashboard({
+    api,
+    session,
+    currentPage,
+    classes,
+    stompClient,
+    rankPreviewVisible,
+    setMessage
+  })
+
+  const {
     visibleExams,
     classStudentsForSelectedExam,
     examQuestionCount,
     currentQuestion,
     currentExamSubmitted,
+    selectedMonitorStudent,
+    selectedMonitorAnswers,
+    finalScoreRows,
     answerCountForStudent,
+    examStudentStatus,
     examElapsedLabel,
+    examEndLabel,
     examRemainingLabel,
     createExam,
+    handleExamFileChange,
+    resetExamForm,
     openExam,
     startExam,
     finishExam,
@@ -158,6 +189,8 @@ export function useSchoolApp() {
     saveAnswer,
     autosaveCurrentAnswer,
     nextQuestion,
+    previousQuestion,
+    openStudentMonitor,
     requestExamFullscreen,
     reportClientExamViolation,
     reportViolation,
@@ -175,13 +208,19 @@ export function useSchoolApp() {
     realtimeEvents,
     stompClient,
     currentQuestionIndex,
+    selectedMonitorStudentId,
     examStatusFilter,
     examForm,
     examQuestionsText,
+    examQuestionFileName,
+    examFileInputKey,
+    examCreateSuccess,
+    answerSaveSuccess,
     answerDrafts,
     gradeForm,
     violationForm,
     now,
+    currentPage,
     loadClasses,
     loadExams,
     setMessage
@@ -217,9 +256,9 @@ export function useSchoolApp() {
       await bootstrap()
       if (selectedExam.value) await openExam(selectedExam.value.exam.id)
       if (selectedVoting.value) await openVoting(selectedVoting.value.voting.id)
-      setMessage('Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІР»РµРЅС‹', 'success')
+      setMessage('Данные обновлены', 'success')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ', 'error')
+      setMessage(error instanceof Error ? error.message : 'Ошибка обновления', 'error')
     }
   }
 
@@ -230,6 +269,32 @@ export function useSchoolApp() {
   const autosaveInterval = window.setInterval(() => {
     autosaveCurrentAnswer()
   }, 30000)
+
+  watch(currentQuestionIndex, (index) => {
+    if (selectedExam.value) {
+      localStorage.setItem('school-current-question-index', String(index))
+    }
+  })
+
+  watch(
+    () => [session.token, session.role, currentPage.value] as const,
+    ([token, role, page]) => {
+      if (!token) {
+        disconnectAdminDashboardSocket()
+        return
+      }
+
+      if (role === 'ADMIN' && page === 'home') {
+        connectAdminDashboardSocket()
+        return
+      }
+
+      if (role === 'ADMIN') {
+        disconnectAdminDashboardSocket()
+      }
+    },
+    { immediate: true }
+  )
 
   onUnmounted(() => {
     window.clearInterval(clockInterval)
@@ -245,6 +310,17 @@ export function useSchoolApp() {
     window.addEventListener('blur', handleWindowBlur)
 
     await restoreSession()
+    const savedExamId = Number(localStorage.getItem('school-selected-exam-id'))
+    const savedQuestionIndex = Number(localStorage.getItem('school-current-question-index'))
+    if (session.token && currentPage.value === 'exams' && Number.isInteger(savedExamId) && savedExamId > 0) {
+      try {
+        currentQuestionIndex.value = Number.isInteger(savedQuestionIndex) && savedQuestionIndex >= 0 ? savedQuestionIndex : 0
+        await openExam(savedExamId, true)
+      } catch {
+        localStorage.removeItem('school-selected-exam-id')
+        localStorage.removeItem('school-current-question-index')
+      }
+    }
   })
 
   return reactive({
@@ -263,13 +339,16 @@ export function useSchoolApp() {
     myResults,
     realtimeEvents,
     currentQuestionIndex,
+    selectedMonitorStudentId,
     selectedVoteOptionId,
     now,
     examStatusFilter,
+    examMonitorTab,
     votingStatusFilter,
     userRoleFilter,
     editingUserId,
     expulsionCandidate,
+    rankPreviewVisible,
     userFilters,
     registerForm,
     confirmPassword,
@@ -277,6 +356,10 @@ export function useSchoolApp() {
     userSaveSuccess,
     examForm,
     examQuestionsText,
+    examQuestionFileName,
+    examFileInputKey,
+    examCreateSuccess,
+    answerSaveSuccess,
     answerDrafts,
     gradeForm,
     votingForm,
@@ -307,16 +390,22 @@ export function useSchoolApp() {
     curatorViolations,
     curatorPrivilegeRequests,
     examinerHomeRows,
+    pendingRankUpdates,
     examQuestionCount,
     currentQuestion,
     currentExamSubmitted,
+    selectedMonitorStudent,
+    selectedMonitorAnswers,
+    finalScoreRows,
     currentVotingLocked,
     setMessage,
     formatNumber,
     formatDateTime,
     generatePassword,
     answerCountForStudent,
+    examStudentStatus,
     examElapsedLabel,
+    examEndLabel,
     examRemainingLabel,
     totalVotes,
     votingRemainingLabel,
@@ -325,6 +414,8 @@ export function useSchoolApp() {
     bootstrap,
     refreshCurrent,
     openPage,
+    refreshRankPreview,
+    confirmRankUpdates,
     resetRegisterForm,
     registerUser,
     editUser,
@@ -332,6 +423,8 @@ export function useSchoolApp() {
     closeExpulsionPlaceholder,
     deactivateUser,
     createExam,
+    handleExamFileChange,
+    resetExamForm,
     openExam,
     startExam,
     finishExam,
@@ -339,6 +432,8 @@ export function useSchoolApp() {
     saveCurrentAnswer,
     saveAnswer,
     nextQuestion,
+    previousQuestion,
+    openStudentMonitor,
     requestExamFullscreen,
     reportClientExamViolation,
     reportViolation,
@@ -355,6 +450,7 @@ export function useSchoolApp() {
 }
 
 export type SchoolAppContext = ReturnType<typeof useSchoolApp>
+
 
 
 
