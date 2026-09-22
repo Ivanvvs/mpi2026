@@ -27,7 +27,10 @@ import com.exam.realtime.ExamRealtimePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static com.exam.util.DateTimeUtils.nowUtc;
 
@@ -89,24 +92,37 @@ public class ExamParticipationService {
             throw new BadRequestException("Answers can be saved only for active exam");
         }
 
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Student was not found"));
+        Optional<User> optionalStudent = userRepository.findById(studentId);
+        if (!optionalStudent.isPresent()) {
+            throw new ResourceNotFoundException("Student was not found");
+        }
+        User student = optionalStudent.get();
         validateStudentCanTakeExam(session, student);
         ExamAttempt attempt = getOrCreateAttempt(session, student);
         if (attempt.isSubmitted()) {
             throw new BadRequestException("Submitted exam attempt cannot be changed");
         }
 
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Question was not found"));
+        Optional<Question> optionalQuestion = questionRepository.findById(questionId);
+        if (!optionalQuestion.isPresent()) {
+            throw new ResourceNotFoundException("Question was not found");
+        }
+        Question question = optionalQuestion.get();
         if (!question.getSessionId().equals(sessionId)) {
             throw new BadRequestException("Question does not belong to this exam");
         }
 
-        Answer answer = answerRepository.findBySessionIdAndUserId(sessionId, studentId).stream()
-                .filter(item -> item.getQuestionId().equals(questionId))
-                .findFirst()
-                .orElseGet(Answer::new);
+        Answer answer = null;
+        List<Answer> existingAnswers = answerRepository.findBySessionIdAndUserId(sessionId, studentId);
+        for (Answer existingAnswer : existingAnswers) {
+            if (existingAnswer.getQuestionId().equals(questionId)) {
+                answer = existingAnswer;
+                break;
+            }
+        }
+        if (answer == null) {
+            answer = new Answer();
+        }
 
         answer.setSessionId(sessionId);
         answer.setUserId(studentId);
@@ -139,10 +155,11 @@ public class ExamParticipationService {
         if (attempt.getSubmittedAt() == null) {
             attempt.setSubmittedAt(nowUtc());
             attempt = attemptRepository.save(attempt);
-            answerRepository.findBySessionIdAndUserId(sessionId, user.getId()).forEach(answer -> {
+            List<Answer> answers = answerRepository.findBySessionIdAndUserId(sessionId, user.getId());
+            for (Answer answer : answers) {
                 answer.setFinalSubmitted(true);
                 answerRepository.save(answer);
-            });
+            }
             realtimePublisher.publish(sessionId, user.getId(), "ATTEMPT_SUBMITTED", "Student attempt has been submitted");
         }
         return attempt;
@@ -156,10 +173,10 @@ public class ExamParticipationService {
 
         User domainUser = null;
         ExamAttemptResponse attempt = ExamAttemptResponse.empty();
-        List<Answer> answers = List.of();
-        var results = List.copyOf(examResultService.getResultsForDetails(sessionId, null));
-        List<com.exam.model.Violation> violations = List.of();
-        List<ExamStudentAttemptResponse> attempts = List.of();
+        List<Answer> answers = Collections.emptyList();
+        List<com.exam.model.ExamResult> results = new ArrayList<>(examResultService.getResultsForDetails(sessionId, null));
+        List<com.exam.model.Violation> violations = Collections.emptyList();
+        List<ExamStudentAttemptResponse> attempts = Collections.emptyList();
 
         if (student) {
             domainUser = currentUserService.getProfile();
@@ -169,40 +186,58 @@ public class ExamParticipationService {
             answers = answerRepository.findBySessionIdAndUserId(sessionId, domainUser.getId());
             results = session.getStatus() == ExamStatus.FINISHED
                     ? examResultService.getResultsForDetails(sessionId, domainUser.getId())
-                    : List.of();
+                    : Collections.emptyList();
         } else if (includeFullExamData) {
             answers = getAnswers(sessionId);
             results = examResultService.getResultsForDetails(sessionId, null);
             violations = violationRepository.findBySessionId(sessionId);
-            attempts = attemptRepository.findBySessionId(sessionId).stream()
-                    .map(ExamStudentAttemptResponse::from)
-                    .toList();
+            List<ExamAttempt> examAttempts = attemptRepository.findBySessionId(sessionId);
+            attempts = new ArrayList<>();
+            for (ExamAttempt examAttempt : examAttempts) {
+                attempts.add(ExamStudentAttemptResponse.from(examAttempt));
+            }
         } else {
-            results = List.of();
+            results = Collections.emptyList();
+        }
+
+        List<QuestionResponse> questionResponses = new ArrayList<>();
+        for (Question question : getQuestions(sessionId)) {
+            questionResponses.add(QuestionResponse.from(question, includeFullExamData));
+        }
+        List<AnswerDTO> answerResponses = new ArrayList<>();
+        for (Answer answer : answers) {
+            answerResponses.add(AnswerDTO.from(answer));
+        }
+        List<ExamResultResponse> resultResponses = new ArrayList<>();
+        for (com.exam.model.ExamResult result : results) {
+            resultResponses.add(ExamResultResponse.from(result));
+        }
+        List<ViolationDTO> violationResponses = new ArrayList<>();
+        for (com.exam.model.Violation violation : violations) {
+            violationResponses.add(ViolationDTO.from(violation));
         }
 
         return new ExamDetailsResponse(
                 ExamSessionDTO.from(session),
-                getQuestions(sessionId).stream()
-                        .map(question -> QuestionResponse.from(question, includeFullExamData))
-                        .toList(),
-                answers.stream().map(AnswerDTO::from).toList(),
-                results.stream().map(ExamResultResponse::from).toList(),
-                violations.stream().map(ViolationDTO::from).toList(),
+                questionResponses,
+                answerResponses,
+                resultResponses,
+                violationResponses,
                 attempt,
                 attempts
         );
     }
 
     private ExamAttempt getOrCreateAttempt(ExamSession session, User student) {
-        return attemptRepository.findBySessionIdAndStudentId(session.getId(), student.getId())
-                .orElseGet(() -> {
-                    ExamAttempt attempt = new ExamAttempt();
-                    attempt.setSession(session);
-                    attempt.setStudent(student);
-                    attempt.setStartedAt(nowUtc());
-                    return attemptRepository.save(attempt);
-                });
+        Optional<ExamAttempt> optionalAttempt = attemptRepository.findBySessionIdAndStudentId(session.getId(), student.getId());
+        if (optionalAttempt.isPresent()) {
+            return optionalAttempt.get();
+        }
+        ExamAttempt attempt = new ExamAttempt();
+        attempt.setSession(session);
+        attempt.setStudent(student);
+        attempt.setStartedAt(nowUtc());
+        return attemptRepository.save(attempt);
     }
 
     private void validateStudentCanTakeExam(ExamSession session, User student) {

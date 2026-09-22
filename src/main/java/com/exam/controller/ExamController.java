@@ -10,11 +10,16 @@ import com.exam.dto.GradeExamRequest;
 import com.exam.dto.QuestionResponse;
 import com.exam.dto.SubmitAnswerRequest;
 import com.exam.dto.SubmitOwnAnswerRequest;
+import com.exam.model.Answer;
 import com.exam.model.ExamAttempt;
+import com.exam.model.ExamResult;
+import com.exam.model.ExamSession;
+import com.exam.model.Question;
 import com.exam.service.ExamService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -29,12 +34,20 @@ public class ExamController {
 
     @GetMapping
     public List<ExamSessionDTO> list() {
-        return examService.getExamsForCurrentUser().stream().map(ExamSessionDTO::from).toList();
+        List<ExamSessionDTO> responses = new ArrayList<>();
+        for (ExamSession session : examService.getExamsForCurrentUser()) {
+            responses.add(ExamSessionDTO.from(session));
+        }
+        return responses;
     }
 
     @GetMapping("/my")
     public List<ExamSessionDTO> myExams() {
-        return examService.getExamsForCurrentUser().stream().map(ExamSessionDTO::from).toList();
+        List<ExamSessionDTO> responses = new ArrayList<>();
+        for (ExamSession session : examService.getExamsForCurrentUser()) {
+            responses.add(ExamSessionDTO.from(session));
+        }
+        return responses;
     }
 
     @GetMapping("/dashboard")
@@ -74,9 +87,11 @@ public class ExamController {
 
     @GetMapping("/{id}/questions")
     public List<QuestionResponse> questions(@PathVariable Long id) {
-        return examService.getQuestions(id).stream()
-                .map(question -> QuestionResponse.from(question, true))
-                .toList();
+        List<QuestionResponse> responses = new ArrayList<>();
+        for (Question question : examService.getQuestions(id)) {
+            responses.add(QuestionResponse.from(question, true));
+        }
+        return responses;
     }
 
     @PostMapping("/{id}/answers")
@@ -113,12 +128,20 @@ public class ExamController {
 
     @GetMapping("/{id}/answers")
     public List<AnswerDTO> answers(@PathVariable Long id) {
-        return examService.getAnswers(id).stream().map(AnswerDTO::from).toList();
+        List<AnswerDTO> responses = new ArrayList<>();
+        for (Answer answer : examService.getAnswers(id)) {
+            responses.add(AnswerDTO.from(answer));
+        }
+        return responses;
     }
 
     @GetMapping("/{id}/answers/{studentId}")
     public List<AnswerDTO> studentAnswers(@PathVariable Long id, @PathVariable Long studentId) {
-        return examService.getStudentAnswers(id, studentId).stream().map(AnswerDTO::from).toList();
+        List<AnswerDTO> responses = new ArrayList<>();
+        for (Answer answer : examService.getStudentAnswers(id, studentId)) {
+            responses.add(AnswerDTO.from(answer));
+        }
+        return responses;
     }
 
     @PostMapping("/{id}/grades")
@@ -126,16 +149,29 @@ public class ExamController {
             @PathVariable Long id,
             @Valid @RequestBody GradeExamRequest request
     ) {
-        return examService.gradeExam(id, request).stream().map(ExamResultResponse::from).toList();
+        List<ExamResultResponse> responses = new ArrayList<>();
+        for (ExamResult result : examService.gradeExam(id, request)) {
+            responses.add(ExamResultResponse.from(result));
+        }
+        return responses;
     }
 
     @GetMapping("/{id}/results")
     public List<ExamResultResponse> results(@PathVariable Long id) {
-        return examService.getResults(id).stream().map(ExamResultResponse::from).toList();
+        List<ExamResultResponse> responses = new ArrayList<>();
+        for (ExamResult result : examService.getResults(id)) {
+            responses.add(ExamResultResponse.from(result));
+        }
+        return responses;
     }
 
     @GetMapping("/students/{studentId}/results")
     public List<ExamResultResponse> studentResults(@PathVariable Long studentId) {
-        return examService.getStudentResults(studentId).stream().map(ExamResultResponse::from).toList();
+        List<ExamResultResponse> responses = new ArrayList<>();
+        for (ExamResult result : examService.getStudentResults(studentId)) {
+            responses.add(ExamResultResponse.from(result));
+        }
+        return responses;
     }
+
 }

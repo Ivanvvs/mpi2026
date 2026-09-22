@@ -2,6 +2,7 @@ package com.exam.service;
 
 import com.exam.auth.Role;
 import com.exam.dto.CreateExamRequest;
+import com.exam.dto.QuestionRequest;
 import com.exam.exception.BadRequestException;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ExamSession;
@@ -18,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static com.exam.util.DateTimeUtils.nowUtc;
 
@@ -56,8 +60,11 @@ public class ExamLifecycleService {
             throw new BadRequestException("Exam must contain at least one question");
         }
 
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
-                .orElseThrow(() -> new ResourceNotFoundException("Class was not found"));
+        Optional<SchoolClass> optionalSchoolClass = classRepository.findById(request.getClassId());
+        if (!optionalSchoolClass.isPresent()) {
+            throw new ResourceNotFoundException("Class was not found");
+        }
+        SchoolClass schoolClass = optionalSchoolClass.get();
 
         ExamSession session = new ExamSession();
         session.setTitle(request.getTitle());
@@ -72,7 +79,7 @@ public class ExamLifecycleService {
         session = sessionRepository.save(session);
 
         int index = 1;
-        for (var questionRequest : request.getQuestions()) {
+        for (QuestionRequest questionRequest : request.getQuestions()) {
             Question question = new Question();
             question.setSessionId(session.getId());
             question.setOrderIndex(questionRequest.getOrderIndex() == null ? index : questionRequest.getOrderIndex());
@@ -122,16 +129,22 @@ public class ExamLifecycleService {
     }
 
     public ExamSession getSession(Long id) {
-        ExamSession session = sessionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Exam was not found"));
+        Optional<ExamSession> optionalSession = sessionRepository.findById(id);
+        if (!optionalSession.isPresent()) {
+            throw new ResourceNotFoundException("Exam was not found");
+        }
+        ExamSession session = optionalSession.get();
         assertCanViewExam(session);
         return finishIfExpired(session);
     }
 
     public List<ExamSession> getExams() {
-        return sessionRepository.findAll().stream()
-                .map(this::finishIfExpired)
-                .toList();
+        List<ExamSession> sessions = sessionRepository.findAll();
+        List<ExamSession> result = new ArrayList<>();
+        for (ExamSession session : sessions) {
+            result.add(finishIfExpired(session));
+        }
+        return result;
     }
 
     public List<ExamSession> getExamsForCurrentUser() {
@@ -141,27 +154,39 @@ public class ExamLifecycleService {
             return getExams();
         }
         if (role == Role.EXAMINER) {
-            return sessionRepository.findByCreatedById(accessControl.currentAccountId()).stream()
-                    .map(this::finishIfExpired)
-                    .toList();
+            List<ExamSession> sessions = sessionRepository.findByCreatedById(accessControl.currentAccountId());
+            List<ExamSession> result = new ArrayList<>();
+            for (ExamSession session : sessions) {
+                result.add(finishIfExpired(session));
+            }
+            return result;
         }
         if (user.getSchoolClass() == null) {
-            return List.of();
+            return Collections.emptyList();
         }
-        return sessionRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
-                .map(this::finishIfExpired)
-                .toList();
+        List<ExamSession> sessions = sessionRepository.findBySchoolClassId(user.getSchoolClass().getId());
+        List<ExamSession> result = new ArrayList<>();
+        for (ExamSession session : sessions) {
+            result.add(finishIfExpired(session));
+        }
+        return result;
     }
 
     public List<ExamSession> getExamsForClass(Long classId) {
-        return sessionRepository.findBySchoolClassId(classId).stream()
-                .map(this::finishIfExpired)
-                .toList();
+        List<ExamSession> sessions = sessionRepository.findBySchoolClassId(classId);
+        List<ExamSession> result = new ArrayList<>();
+        for (ExamSession session : sessions) {
+            result.add(finishIfExpired(session));
+        }
+        return result;
     }
 
     @Transactional
     public void finishExpiredExams() {
-        sessionRepository.findByStatus(ExamStatus.ACTIVE).forEach(this::finishIfExpired);
+        List<ExamSession> sessions = sessionRepository.findByStatus(ExamStatus.ACTIVE);
+        for (ExamSession session : sessions) {
+            finishIfExpired(session);
+        }
     }
 
     private ExamSession finishIfExpired(ExamSession session) {
