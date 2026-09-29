@@ -17,15 +17,18 @@ public class VotingService {
     private final VotingLifecycleService lifecycleService;
     private final VotingParticipationService participationService;
     private final VotingResultService resultService;
+    private final CurrentUserService currentUserService;
 
     public VotingService(
             VotingLifecycleService lifecycleService,
             VotingParticipationService participationService,
-            VotingResultService resultService
+            VotingResultService resultService,
+            CurrentUserService currentUserService
     ) {
         this.lifecycleService = lifecycleService;
         this.participationService = participationService;
         this.resultService = resultService;
+        this.currentUserService = currentUserService;
     }
 
     public SecretVoting createVoting(CreateVotingRequest request) {
@@ -45,7 +48,23 @@ public class VotingService {
     }
 
     public VotingDetailsResponse getDetails(Long votingId) {
-        return resultService.getDetails(votingId);
+        SecretVoting voting = lifecycleService.getVoting(votingId);
+        var account = currentUserService.getAccount();
+        boolean student = account.getRole() == com.exam.auth.Role.STUDENT;
+        boolean hasVoted = false;
+        if (student) {
+            var user = currentUserService.getProfile();
+            participationService.validateStudentCanViewVoting(voting, user);
+            hasVoted = participationService.hasCurrentUserVoted(votingId);
+        }
+        boolean resultsVisible = voting.getStatus() == com.exam.model.VotingStatus.FINISHED;
+        return new VotingDetailsResponse(
+                com.exam.dto.SecretVotingResponse.from(voting),
+                participationService.getOptions(votingId).stream().map(com.exam.dto.VotingOptionResponse::from).toList(),
+                resultsVisible ? resultService.getStoredResults(voting) : Map.of(),
+                hasVoted,
+                resultsVisible
+        );
     }
 
     public List<VotingOption> getOptions(Long votingId) {
@@ -65,7 +84,7 @@ public class VotingService {
     }
 
     public Map<String, Long> getResults(Long votingId) {
-        return resultService.getResults(votingId);
+        return resultService.getStoredResults(lifecycleService.getVoting(votingId));
     }
 
     public void finishExpiredVotings() {

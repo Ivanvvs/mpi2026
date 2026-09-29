@@ -1,14 +1,16 @@
 package com.exam.service;
 
-import com.exam.auth.Role;
-import com.exam.dto.SecretVotingResponse;
-import com.exam.dto.VotingDetailsResponse;
-import com.exam.dto.VotingOptionResponse;
+import com.exam.exception.BadRequestException;
 import com.exam.model.SecretVoting;
-import com.exam.model.User;
+import com.exam.model.Vote;
 import com.exam.model.VotingOption;
+import com.exam.model.VotingResult;
 import com.exam.model.VotingStatus;
+import com.exam.repository.VoteRepository;
+import com.exam.repository.VotingOptionRepository;
+import com.exam.repository.VotingResultRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -19,60 +21,53 @@ import java.util.Map;
 @Service
 public class VotingResultService {
 
-    private final VotingLifecycleService lifecycleService;
-    private final VotingParticipationService participationService;
-    private final CurrentUserService currentUserService;
+    private final VotingOptionRepository optionRepository;
+    private final VoteRepository voteRepository;
+    private final VotingResultRepository resultRepository;
 
     public VotingResultService(
-            VotingLifecycleService lifecycleService,
-            VotingParticipationService participationService,
-            CurrentUserService currentUserService
+            VotingOptionRepository optionRepository,
+            VoteRepository voteRepository,
+            VotingResultRepository resultRepository
     ) {
-        this.lifecycleService = lifecycleService;
-        this.participationService = participationService;
-        this.currentUserService = currentUserService;
+        this.optionRepository = optionRepository;
+        this.voteRepository = voteRepository;
+        this.resultRepository = resultRepository;
     }
 
-    public VotingDetailsResponse getDetails(Long votingId) {
-        SecretVoting voting = lifecycleService.getVoting(votingId);
-        var account = currentUserService.getAccount();
-        boolean student = account.getRole() == Role.STUDENT;
-        boolean hasVoted = false;
-        boolean resultsVisible = !student || voting.getStatus() == VotingStatus.FINISHED;
-
-        if (student) {
-            User user = currentUserService.getProfile();
-            participationService.validateStudentCanViewVoting(voting, user);
-            hasVoted = participationService.hasCurrentUserVoted(votingId);
+    @Transactional
+    public void calculateAndSaveResults(SecretVoting voting) {
+        if (voting.getStatus() != VotingStatus.FINISHED) {
+            throw new IllegalStateException("Final results can only be calculated for a finished voting");
         }
-
-        return new VotingDetailsResponse(
-                SecretVotingResponse.from(voting),
-                participationService.getOptions(votingId).stream().map(VotingOptionResponse::from).toList(),
-                resultsVisible ? getResults(votingId) : Map.of(),
-                hasVoted,
-                resultsVisible
-        );
-    }
-
-    public Map<String, Long> getResults(Long votingId) {
-        List<VotingOption> options = participationService.getOptions(votingId);
-        Map<Long, String> optionLabels = new LinkedHashMap<>();
-        Map<String, Long> results = new LinkedHashMap<>();
-
-        for (VotingOption option : options) {
-            optionLabels.put(option.getId(), option.getLabel());
-            results.put(option.getLabel(), 0L);
-        }
-
-        for (var vote : participationService.getVotes(votingId)) {
+        List<VotingOption> options = optionRepository.findByVotingId(voting.getId());
+        Map<Long, Long> counts = new LinkedHashMap<>();
+        options.forEach(option -> counts.put(option.getId(), 0L));
+        for (Vote vote : voteRepository.findByVotingId(voting.getId())) {
             Long optionId = decodeVote(vote.getEncryptedValue());
-            String label = optionLabels.get(optionId);
-            if (label != null) {
-                results.put(label, results.get(label) + 1);
+            if (counts.containsKey(optionId)) {
+                counts.computeIfPresent(optionId, (ignored, count) -> count + 1);
             }
         }
+        for (VotingOption option : options) {
+            VotingResult result = resultRepository.findByVotingIdAndOptionId(voting.getId(), option.getId())
+                    .orElseGet(VotingResult::new);
+            result.setVoting(voting);
+            result.setOption(option);
+            result.setVotesCount(counts.get(option.getId()));
+            result.setCalculatedAt(com.exam.util.DateTimeUtils.nowUtc());
+            resultRepository.save(result);
+        }
+    }
 
+    @Transactional(readOnly = true)
+    public Map<String, Long> getStoredResults(SecretVoting voting) {
+        if (voting.getStatus() != VotingStatus.FINISHED) {
+            throw new BadRequestException("Final results are available after voting is finished");
+        }
+        Map<String, Long> results = new LinkedHashMap<>();
+        resultRepository.findByVotingIdOrderByOptionId(voting.getId())
+                .forEach(result -> results.put(result.getOption().getLabel(), result.getVotesCount()));
         return results;
     }
 

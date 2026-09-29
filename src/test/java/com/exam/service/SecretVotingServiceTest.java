@@ -10,6 +10,7 @@ import com.exam.model.SecretVoting;
 import com.exam.model.Vote;
 import com.exam.model.VotingOption;
 import com.exam.model.VotingStatus;
+import com.exam.repository.VotingResultRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.SecretVotingRepository;
 import com.exam.repository.UserRepository;
@@ -45,6 +46,7 @@ class SecretVotingServiceTest {
     private final SecretVotingRepository votingRepository;
     private final UserRepository userRepository;
     private final AppUserRepository accountRepository;
+    private final VotingResultRepository resultRepository;
 
     @Autowired
     SecretVotingServiceTest(
@@ -52,13 +54,15 @@ class SecretVotingServiceTest {
             SchoolClassRepository classRepository,
             SecretVotingRepository votingRepository,
             UserRepository userRepository,
-            AppUserRepository accountRepository
+            AppUserRepository accountRepository,
+            VotingResultRepository resultRepository
     ) {
         this.votingService = votingService;
         this.classRepository = classRepository;
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
+        this.resultRepository = resultRepository;
     }
 
     @AfterEach
@@ -107,6 +111,17 @@ class SecretVotingServiceTest {
     }
 
     @Test
+    void rejectsVotingWithFewerThanTwoOptions() {
+        SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
+        authenticateAs("curator");
+        CreateVotingRequest request = request(ownClass.getId(), nowUtc().plusMinutes(30));
+        request.setOptions(List.of(option("Only option")));
+
+        assertThatThrownBy(() -> votingService.createVoting(request))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
     void studentVoteIsRecordedAnonymouslyAndCounted() {
         SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
         authenticateAs("curator");
@@ -124,8 +139,14 @@ class SecretVotingServiceTest {
                 .isNotEqualTo(String.valueOf(studentId))
                 .isNotEqualTo(voting.getId() + ":" + studentId);
 
+        authenticateAs("curator");
+        votingService.finishVoting(voting.getId());
         Map<String, Long> results = votingService.getResults(voting.getId());
         assertThat(results.get(option.getLabel())).isEqualTo(1L);
+        assertThat(resultRepository.findByVotingIdOrderByOptionId(voting.getId()))
+                .hasSize(2)
+                .extracting(result -> result.getVotesCount())
+                .contains(1L, 0L);
     }
 
     @Test
@@ -143,6 +164,35 @@ class SecretVotingServiceTest {
     }
 
     @Test
+    void studentFromAnotherClassAndNonStudentCannotVote() {
+        SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
+        authenticateAs("curator");
+        SecretVoting voting = votingService.createVoting(request(ownClass.getId(), nowUtc().plusMinutes(30)));
+        VotingOption option = votingService.getOptions(voting.getId()).getFirst();
+
+        authenticateAs("hirata");
+        assertThatThrownBy(() -> votingService.submitCurrentUserVote(voting.getId(), option.getId()))
+                .isInstanceOf(BadRequestException.class);
+
+        authenticateAs("examiner");
+        assertThatThrownBy(() -> votingService.submitCurrentUserVote(voting.getId(), option.getId()))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void reopeningVotingKeepsHasVotedState() {
+        SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
+        authenticateAs("curator");
+        SecretVoting voting = votingService.createVoting(request(ownClass.getId(), nowUtc().plusMinutes(30)));
+        VotingOption option = votingService.getOptions(voting.getId()).getFirst();
+
+        authenticateAs("student");
+        votingService.submitCurrentUserVote(voting.getId(), option.getId());
+
+        assertThat(votingService.getDetails(voting.getId()).isHasVoted()).isTrue();
+    }
+
+    @Test
     void expiredVotingIsFinishedAutomatically() {
         SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
         authenticateAs("curator");
@@ -154,8 +204,41 @@ class SecretVotingServiceTest {
 
         votingService.finishExpiredVotings();
 
-        assertThat(votingRepository.findById(voting.getId()).orElseThrow().getStatus())
-                .isEqualTo(VotingStatus.FINISHED);
+        SecretVoting finished = votingRepository.findById(voting.getId()).orElseThrow();
+        assertThat(finished.getStatus()).isEqualTo(VotingStatus.FINISHED);
+        assertThat(finished.getFinishedAt()).isEqualTo(finished.getEndsAt());
+        assertThat(resultRepository.findByVotingIdOrderByOptionId(voting.getId())).hasSize(2);
+    }
+
+    @Test
+    void repeatedFinishKeepsOriginalTimestampAndDoesNotDuplicateResults() {
+        SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
+        authenticateAs("curator");
+        SecretVoting voting = votingService.createVoting(request(ownClass.getId(), nowUtc().plusMinutes(30)));
+
+        votingService.finishVoting(voting.getId());
+        var originalFinishedAt = votingRepository.findById(voting.getId()).orElseThrow().getFinishedAt();
+        votingService.finishVoting(voting.getId());
+
+        SecretVoting stored = votingRepository.findById(voting.getId()).orElseThrow();
+        assertThat(stored.getFinishedAt()).isEqualTo(originalFinishedAt);
+        assertThat(resultRepository.findByVotingIdOrderByOptionId(voting.getId())).hasSize(2);
+    }
+
+    @Test
+    void finishedVotingRejectsNewVotesAndReturnsStoredResults() {
+        SchoolClass ownClass = classRepository.findByName("10A").orElseThrow();
+        authenticateAs("curator");
+        SecretVoting voting = votingService.createVoting(request(ownClass.getId(), nowUtc().plusMinutes(30)));
+        VotingOption option = votingService.getOptions(voting.getId()).getFirst();
+        votingService.finishVoting(voting.getId());
+
+        authenticateAs("student");
+        assertThatThrownBy(() -> votingService.submitCurrentUserVote(voting.getId(), option.getId()))
+                .isInstanceOf(BadRequestException.class);
+
+        authenticateAs("curator");
+        assertThat(votingService.getResults(voting.getId())).containsEntry(option.getLabel(), 0L);
     }
 
     private CreateVotingRequest request(Long classId, LocalDateTime endsAt) {

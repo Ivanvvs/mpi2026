@@ -16,6 +16,7 @@ import com.exam.repository.VotingOptionRepository;
 import com.exam.repository.VotingReceiptRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -58,14 +59,14 @@ public class VotingParticipationService {
 
     @Transactional
     public Vote submitVote(Long votingId, SubmitVoteRequest request) {
-        SecretVoting voting = lifecycleService.getVoting(votingId);
+        SecretVoting voting = lifecycleService.getVotingForUpdate(votingId);
 
         if (voting.getStatus() != VotingStatus.ACTIVE) {
             throw new BadRequestException("Voting is already finished");
         }
 
         if (voting.getEndsAt() != null && voting.getEndsAt().isBefore(nowUtc())) {
-            lifecycleService.finishVoting(votingId);
+            lifecycleService.finishIfExpired(voting);
             throw new BadRequestException("Voting time is over");
         }
 
@@ -87,12 +88,17 @@ public class VotingParticipationService {
         vote.setVotingId(votingId);
         vote.setEncryptedValue(encodeVote(option.getId()));
         vote.setAnonymousVoterHash(hash(votingId + ":" + student.getId()));
-        voteRepository.save(vote);
-
         VotingReceipt receipt = new VotingReceipt();
         receipt.setVoting(voting);
         receipt.setStudent(student);
-        receiptRepository.save(receipt);
+        try {
+            voteRepository.save(vote);
+            // Flush both records inside this transaction so a duplicate request is translated,
+            // while Vote and VotingReceipt still commit or roll back together.
+            receiptRepository.saveAndFlush(receipt);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BadRequestException("Student has already voted");
+        }
 
         return vote;
     }
