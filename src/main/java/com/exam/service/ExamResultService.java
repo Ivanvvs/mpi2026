@@ -19,8 +19,11 @@ import com.exam.realtime.ExamRealtimePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 import static com.exam.util.DateTimeUtils.nowUtc;
 
@@ -69,14 +72,20 @@ public class ExamResultService {
         }
 
         for (StudentScoreRequest scoreRequest : request.getScores()) {
-            User student = userRepository.findById(scoreRequest.getStudentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Student was not found"));
+            Optional<User> optionalStudent = userRepository.findById(scoreRequest.getStudentId());
+            if (!optionalStudent.isPresent()) {
+                throw new ResourceNotFoundException("Student was not found");
+            }
+            User student = optionalStudent.get();
 
-            ExamResult result = resultRepository.findBySessionIdAndStudentId(sessionId, student.getId())
-                    .orElseGet(ExamResult::new);
-            int violationPenalty = violationRepository.findBySessionIdAndUserId(sessionId, student.getId()).stream()
-                    .mapToInt(violation -> violation.getPointsPenalty() == null ? 0 : violation.getPointsPenalty())
-                    .sum();
+            Optional<ExamResult> optionalResult = resultRepository.findBySessionIdAndStudentId(sessionId, student.getId());
+            ExamResult result = optionalResult.isPresent() ? optionalResult.get() : new ExamResult();
+            int violationPenalty = 0;
+            for (com.exam.model.Violation violation : violationRepository.findBySessionIdAndUserId(sessionId, student.getId())) {
+                if (violation.getPointsPenalty() != null) {
+                    violationPenalty += violation.getPointsPenalty();
+                }
+            }
             result.setSession(session);
             result.setStudent(student);
             result.setRawScore(scoreRequest.getRawScore());
@@ -86,9 +95,13 @@ public class ExamResultService {
             resultRepository.save(result);
         }
 
-        List<ExamResult> results = resultRepository.findBySessionId(sessionId).stream()
-                .sorted(Comparator.comparingInt(ExamResult::getFinalScore).reversed())
-                .toList();
+        List<ExamResult> results = new ArrayList<>(resultRepository.findBySessionId(sessionId));
+        results.sort(new Comparator<ExamResult>() {
+            @Override
+            public int compare(ExamResult first, ExamResult second) {
+                return Integer.compare(second.getFinalScore(), first.getFinalScore());
+            }
+        });
 
         int place = 1;
         for (ExamResult result : results) {
@@ -114,19 +127,22 @@ public class ExamResultService {
     }
 
     public ExamDashboardResponse getDashboard() {
-        return new ExamDashboardResponse(
-                examLifecycleService.getExams().stream().map(ExamSessionDTO::from).toList(),
-                classRepository.findByActiveTrueOrderBySPointsDesc()
-        );
+        List<ExamSessionDTO> exams = new ArrayList<>();
+        for (ExamSession session : examLifecycleService.getExams()) {
+            exams.add(ExamSessionDTO.from(session));
+        }
+        return new ExamDashboardResponse(exams, classRepository.findByActiveTrueOrderBySPointsDesc());
     }
 
     public List<ExamResult> getResultsForDetails(Long sessionId, Long studentId) {
         if (studentId == null) {
             return resultRepository.findBySessionId(sessionId);
         }
-        return resultRepository.findBySessionIdAndStudentId(sessionId, studentId)
-                .map(List::of)
-                .orElseGet(List::of);
+        Optional<ExamResult> optionalResult = resultRepository.findBySessionIdAndStudentId(sessionId, studentId);
+        if (!optionalResult.isPresent()) {
+            return Collections.emptyList();
+        }
+        return Collections.singletonList(optionalResult.get());
     }
 
     private void assertCanGrade(ExamSession session) {

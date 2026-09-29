@@ -43,14 +43,7 @@ public class UserService {
     @Transactional
     public User registerUser(RegisterUserRequest request) {
         validateRegisterRequest(request);
-
-        if (accountRepository.existsByUsername(request.getUsername())) {
-            throw new BadRequestException("Username is already used");
-        }
-
-        if (accountRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email is already used");
-        }
+        validateUniqueAccount(request);
 
         SchoolClass schoolClass = null;
         if (request.getClassId() != null) {
@@ -163,6 +156,22 @@ public class UserService {
 
     private void validateRegisterRequest(RegisterUserRequest request) {
         validateRoleSpecificFields(request.getRole(), request.getClassId(), request.getEntranceExamScore());
+    }
+
+    private void validateUniqueAccount(RegisterUserRequest request) {
+        boolean usernameExists =
+                accountRepository.existsByUsername(request.getUsername());
+
+        if (usernameExists) {
+            throw new BadRequestException("Username is already used");
+        }
+
+        boolean emailExists =
+                accountRepository.existsByEmail(request.getEmail());
+
+        if (emailExists) {
+            throw new BadRequestException("Email is already used");
+        }
     }
 
     private void validateUpdateRequest(UpdateUserRequest request) {

@@ -28,27 +28,39 @@ public class VotingLifecycleService {
     private final SchoolClassRepository classRepository;
     private final CurrentUserService currentUserService;
     private final AccessControlService accessControl;
+    private final VotingResultService resultService;
 
     public VotingLifecycleService(
             SecretVotingRepository votingRepository,
             VotingOptionRepository optionRepository,
             SchoolClassRepository classRepository,
             CurrentUserService currentUserService,
-            AccessControlService accessControl
+            AccessControlService accessControl,
+            VotingResultService resultService
     ) {
         this.votingRepository = votingRepository;
         this.optionRepository = optionRepository;
         this.classRepository = classRepository;
         this.currentUserService = currentUserService;
         this.accessControl = accessControl;
+        this.resultService = resultService;
     }
 
     @Transactional
     public SecretVoting createVoting(CreateVotingRequest request) {
         assertCanCreateVoting(request.getClassId());
 
-        if (request.getOptions().isEmpty()) {
-            throw new BadRequestException("Voting must contain at least one option");
+        if (request.getOptions() == null || request.getOptions().size() < 2) {
+            throw new BadRequestException("Voting must contain at least two options");
+        }
+
+        var normalizedLabels = request.getOptions().stream().map(VotingOptionRequest::getLabel)
+                .map(label -> label == null ? "" : label.trim()).toList();
+        if (normalizedLabels.stream().anyMatch(String::isBlank)) {
+            throw new BadRequestException("Voting option label must not be blank");
+        }
+        if (normalizedLabels.stream().distinct().count() != normalizedLabels.size()) {
+            throw new BadRequestException("Voting option labels must be unique");
         }
 
         if (request.getEndsAt() == null) {
@@ -74,7 +86,7 @@ public class VotingLifecycleService {
         for (VotingOptionRequest optionRequest : request.getOptions()) {
             VotingOption option = new VotingOption();
             option.setVoting(voting);
-            option.setLabel(optionRequest.getLabel());
+            option.setLabel(optionRequest.getLabel().trim());
             option.setCandidateUserId(optionRequest.getCandidateUserId());
             optionRepository.save(option);
         }
@@ -84,13 +96,12 @@ public class VotingLifecycleService {
 
     @Transactional
     public SecretVoting finishVoting(Long votingId) {
-        SecretVoting voting = getVoting(votingId);
+        SecretVoting voting = getVotingForUpdate(votingId);
         assertCanManageVoting(voting);
-        voting.setStatus(VotingStatus.FINISHED);
-        voting.setFinishedAt(nowUtc());
-        return votingRepository.save(voting);
+        return completeVoting(voting, nowUtc());
     }
 
+    @Transactional
     public SecretVoting getVoting(Long votingId) {
         SecretVoting voting = votingRepository.findById(votingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Voting was not found"));
@@ -98,12 +109,14 @@ public class VotingLifecycleService {
         return finishIfExpired(voting);
     }
 
+    @Transactional
     public List<SecretVoting> getVotings() {
         return votingRepository.findAll().stream()
                 .map(this::finishIfExpired)
                 .toList();
     }
 
+    @Transactional
     public List<SecretVoting> getVotingsForCurrentUser() {
         User user = accessControl.currentProfile();
         Role role = accessControl.currentRole();
@@ -128,6 +141,7 @@ public class VotingLifecycleService {
                 .toList();
     }
 
+    @Transactional
     public List<SecretVoting> getVotingsForClass(Long classId) {
         assertCanViewClassVotings(classId);
         return votingRepository.findBySchoolClassId(classId).stream()
@@ -140,15 +154,30 @@ public class VotingLifecycleService {
         votingRepository.findByStatus(VotingStatus.ACTIVE).forEach(this::finishIfExpired);
     }
 
-    private SecretVoting finishIfExpired(SecretVoting voting) {
+    @Transactional
+    SecretVoting finishIfExpired(SecretVoting voting) {
         if (voting.getStatus() == VotingStatus.ACTIVE
                 && voting.getEndsAt() != null
-                && voting.getEndsAt().isBefore(nowUtc())) {
-            voting.setStatus(VotingStatus.FINISHED);
-            voting.setFinishedAt(voting.getEndsAt());
-            return votingRepository.save(voting);
+                && !voting.getEndsAt().isAfter(nowUtc())) {
+            return completeVoting(getVotingForUpdate(voting.getId()), voting.getEndsAt());
         }
         return voting;
+    }
+
+    SecretVoting getVotingForUpdate(Long votingId) {
+        return votingRepository.findWithLockById(votingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Voting was not found"));
+    }
+
+    private SecretVoting completeVoting(SecretVoting voting, java.time.LocalDateTime finishedAt) {
+        if (voting.getStatus() == VotingStatus.FINISHED) {
+            return voting;
+        }
+        voting.setStatus(VotingStatus.FINISHED);
+        voting.setFinishedAt(finishedAt);
+        SecretVoting completed = votingRepository.save(voting);
+        resultService.calculateAndSaveResults(completed);
+        return completed;
     }
 
     private void assertCanViewVoting(SecretVoting voting) {

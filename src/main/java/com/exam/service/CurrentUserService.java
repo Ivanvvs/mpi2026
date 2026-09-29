@@ -8,6 +8,8 @@ import com.exam.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class CurrentUserService {
 
@@ -21,13 +23,19 @@ public class CurrentUserService {
 
     public AppUser getAccount() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return accountRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user was not found"));
+        Optional<AppUser> optionalAccount = accountRepository.findByUsername(username);
+        if (!optionalAccount.isPresent()) {
+            throw new ResourceNotFoundException("Authenticated user was not found");
+        }
+        return optionalAccount.get();
     }
 
     public User getProfile() {
         AppUser account = getAccount();
-        return userRepository.findByAccountId(account.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User profile was not found"));
+        Optional<User> optionalProfile = userRepository.findByAccountId(account.getId());
+        if (!optionalProfile.isPresent()) {
+            throw new ResourceNotFoundException("User profile was not found");
+        }
+        return optionalProfile.get();
     }
 }

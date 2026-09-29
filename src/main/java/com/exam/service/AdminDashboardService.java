@@ -12,6 +12,7 @@ import com.exam.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -69,14 +70,19 @@ public class AdminDashboardService {
     }
 
     private AdminDashboardResponse buildDashboardResponse() {
-        List<AdminDashboardClassResponse> classes = classRepository.findByActiveTrueOrderBySPointsDesc().stream()
-                .map(this::toDashboardClass)
-                .toList();
+        List<AdminDashboardClassResponse> classes = new ArrayList<>();
+        List<SchoolClass> schoolClasses = classRepository.findByActiveTrueOrderBySPointsDesc();
+        for (SchoolClass schoolClass : schoolClasses) {
+            classes.add(toDashboardClass(schoolClass));
+        }
         return new AdminDashboardResponse(classes);
     }
 
     private AdminDashboardClassResponse toDashboardClass(SchoolClass schoolClass) {
-        long studentCount = userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId()).stream().count();
+        long studentCount = 0;
+        for (com.exam.model.User student : userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId())) {
+            studentCount++;
+        }
         return AdminDashboardClassResponse.from(
                 schoolClass,
                 classRankPolicy.resolve(schoolClass.getsPoints()),

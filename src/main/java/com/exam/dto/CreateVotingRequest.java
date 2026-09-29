@@ -22,6 +22,7 @@ public class CreateVotingRequest {
     private LocalDateTime endsAt;
 
     @Valid
+    @NotNull
     private List<VotingOptionRequest> options = new ArrayList<>();
 
     public String getTitle() {
