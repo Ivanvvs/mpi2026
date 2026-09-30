@@ -13,7 +13,7 @@ public class User {
     private Long id;
 
     @OneToOne(optional = false)
-    @JoinColumn(name = "account_id")
+    @JoinColumn(name = "account_id", unique = true)
     private AppUser account;
 
     private String fullName;

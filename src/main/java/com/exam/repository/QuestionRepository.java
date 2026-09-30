@@ -9,6 +9,6 @@ import java.util.List;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
 
-    List<Question> findBySessionId(Long sessionId);
-    List<Question> findBySessionIdOrderByOrderIndexAsc(Long sessionId);
+    List<Question> findBySession_Id(Long sessionId);
+    List<Question> findBySession_IdOrderByOrderIndexAsc(Long sessionId);
 }

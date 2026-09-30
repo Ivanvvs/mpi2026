@@ -71,17 +71,17 @@ public class ExamParticipationService {
 
     public List<Question> getQuestions(Long sessionId) {
         examLifecycleService.getSession(sessionId);
-        return questionRepository.findBySessionIdOrderByOrderIndexAsc(sessionId);
+        return questionRepository.findBySession_IdOrderByOrderIndexAsc(sessionId);
     }
 
     public List<Answer> getAnswers(Long sessionId) {
         examLifecycleService.getSession(sessionId);
-        return answerRepository.findBySessionId(sessionId);
+        return answerRepository.findBySession_Id(sessionId);
     }
 
     public List<Answer> getStudentAnswers(Long sessionId, Long studentId) {
         examLifecycleService.getSession(sessionId);
-        return answerRepository.findBySessionIdAndUserId(sessionId, studentId);
+        return answerRepository.findBySession_IdAndUser_Id(sessionId, studentId);
     }
 
     @Transactional
@@ -113,7 +113,7 @@ public class ExamParticipationService {
         }
 
         Answer answer = null;
-        List<Answer> existingAnswers = answerRepository.findBySessionIdAndUserId(sessionId, studentId);
+        List<Answer> existingAnswers = answerRepository.findBySession_IdAndUser_Id(sessionId, studentId);
         for (Answer existingAnswer : existingAnswers) {
             if (existingAnswer.getQuestionId().equals(questionId)) {
                 answer = existingAnswer;
@@ -124,9 +124,9 @@ public class ExamParticipationService {
             answer = new Answer();
         }
 
-        answer.setSessionId(sessionId);
-        answer.setUserId(studentId);
-        answer.setQuestionId(questionId);
+        answer.setSession(session);
+        answer.setUser(student);
+        answer.setQuestion(question);
         answer.setText(text);
         answer.setSavedAt(nowUtc());
         answer.setFinalSubmitted(finalSubmitted);
@@ -155,7 +155,7 @@ public class ExamParticipationService {
         if (attempt.getSubmittedAt() == null) {
             attempt.setSubmittedAt(nowUtc());
             attempt = attemptRepository.save(attempt);
-            List<Answer> answers = answerRepository.findBySessionIdAndUserId(sessionId, user.getId());
+            List<Answer> answers = answerRepository.findBySession_IdAndUser_Id(sessionId, user.getId());
             for (Answer answer : answers) {
                 answer.setFinalSubmitted(true);
                 answerRepository.save(answer);
@@ -183,14 +183,14 @@ public class ExamParticipationService {
             validateStudentCanTakeExam(session, domainUser);
             ExamAttempt examAttempt = getOrCreateAttempt(session, domainUser);
             attempt = ExamAttemptResponse.from(examAttempt);
-            answers = answerRepository.findBySessionIdAndUserId(sessionId, domainUser.getId());
+            answers = answerRepository.findBySession_IdAndUser_Id(sessionId, domainUser.getId());
             results = session.getStatus() == ExamStatus.FINISHED
                     ? examResultService.getResultsForDetails(sessionId, domainUser.getId())
                     : Collections.emptyList();
         } else if (includeFullExamData) {
             answers = getAnswers(sessionId);
             results = examResultService.getResultsForDetails(sessionId, null);
-            violations = violationRepository.findBySessionId(sessionId);
+            violations = violationRepository.findBySession_Id(sessionId);
             List<ExamAttempt> examAttempts = attemptRepository.findBySessionId(sessionId);
             attempts = new ArrayList<>();
             for (ExamAttempt examAttempt : examAttempts) {

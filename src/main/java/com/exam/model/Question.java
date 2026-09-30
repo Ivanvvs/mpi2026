@@ -10,7 +10,9 @@ public class Question extends QuestionFields {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long sessionId;
+    @ManyToOne
+    @JoinColumn(name = "session_id")
+    private ExamSession session;
 
     public Question() {
         // Required by JPA.
@@ -25,11 +27,15 @@ public class Question extends QuestionFields {
     }
 
     public Long getSessionId() {
-        return sessionId;
+        return session == null ? null : session.getId();
     }
 
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
+    public ExamSession getSession() {
+        return session;
+    }
+
+    public void setSession(ExamSession session) {
+        this.session = session;
     }
 
     public void setType(String type) {

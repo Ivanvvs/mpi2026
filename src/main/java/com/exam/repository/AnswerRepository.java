@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface AnswerRepository extends JpaRepository<Answer, Long> {
 
-    List<Answer> findBySessionId(Long sessionId);
-    List<Answer> findBySessionIdAndUserId(Long sessionId, Long userId);
-    boolean existsBySessionIdAndUserIdAndQuestionId(Long sessionId, Long userId, Long questionId);
+    List<Answer> findBySession_Id(Long sessionId);
+    List<Answer> findBySession_IdAndUser_Id(Long sessionId, Long userId);
+    boolean existsBySession_IdAndUser_IdAndQuestion_Id(Long sessionId, Long userId, Long questionId);
 }

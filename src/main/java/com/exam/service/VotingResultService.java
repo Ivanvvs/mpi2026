@@ -40,10 +40,10 @@ public class VotingResultService {
         if (voting.getStatus() != VotingStatus.FINISHED) {
             throw new IllegalStateException("Final results can only be calculated for a finished voting");
         }
-        List<VotingOption> options = optionRepository.findByVotingId(voting.getId());
+        List<VotingOption> options = optionRepository.findByVoting_Id(voting.getId());
         Map<Long, Long> counts = new LinkedHashMap<>();
         options.forEach(option -> counts.put(option.getId(), 0L));
-        for (Vote vote : voteRepository.findByVotingId(voting.getId())) {
+        for (Vote vote : voteRepository.findByVoting_Id(voting.getId())) {
             Long optionId = decodeVote(vote.getEncryptedValue());
             if (counts.containsKey(optionId)) {
                 counts.computeIfPresent(optionId, (ignored, count) -> count + 1);

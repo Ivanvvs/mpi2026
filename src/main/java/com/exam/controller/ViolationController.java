@@ -19,12 +19,12 @@ public class ViolationController {
 
     @PostMapping("/report")
     public ViolationDTO report(@RequestBody ViolationRequest request) {
-        return ViolationDTO.from(violationService.reportViolation(request.toViolation()));
+        return ViolationDTO.from(violationService.reportViolation(request));
     }
 
     @PostMapping("/report/me")
     public ViolationDTO reportMe(@RequestBody ViolationRequest request) {
-        return ViolationDTO.from(violationService.reportCurrentUserViolation(request.toViolation()));
+        return ViolationDTO.from(violationService.reportCurrentUserViolation(request));
     }
 
     @GetMapping("/session/{sessionId}")

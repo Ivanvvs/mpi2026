@@ -81,7 +81,7 @@ public class ExamLifecycleService {
         int index = 1;
         for (QuestionRequest questionRequest : request.getQuestions()) {
             Question question = new Question();
-            question.setSessionId(session.getId());
+            question.setSession(session);
             question.setOrderIndex(questionRequest.getOrderIndex() == null ? index : questionRequest.getOrderIndex());
             question.setText(questionRequest.getText());
             question.setType(questionRequest.getType() == null ? QuestionType.TEXT : questionRequest.getType());
