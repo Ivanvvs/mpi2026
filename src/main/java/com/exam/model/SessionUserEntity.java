@@ -1,9 +1,6 @@
 package com.exam.model;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.*;
 
 @MappedSuperclass
 public abstract class SessionUserEntity {
@@ -12,9 +9,13 @@ public abstract class SessionUserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long sessionId;
+    @ManyToOne
+    @JoinColumn(name = "session_id")
+    private ExamSession session;
 
-    private Long userId;
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     public Long getId() {
         return id;
@@ -25,18 +26,26 @@ public abstract class SessionUserEntity {
     }
 
     public Long getSessionId() {
-        return sessionId;
+        return session == null ? null : session.getId();
     }
 
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
+    public ExamSession getSession() {
+        return session;
+    }
+
+    public void setSession(ExamSession session) {
+        this.session = session;
     }
 
     public Long getUserId() {
-        return userId;
+        return user == null ? null : user.getId();
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

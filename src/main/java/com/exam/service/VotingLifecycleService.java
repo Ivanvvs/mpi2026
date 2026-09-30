@@ -12,6 +12,7 @@ import com.exam.model.VotingOption;
 import com.exam.model.VotingStatus;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.SecretVotingRepository;
+import com.exam.repository.UserRepository;
 import com.exam.repository.VotingOptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class VotingLifecycleService {
     private final SecretVotingRepository votingRepository;
     private final VotingOptionRepository optionRepository;
     private final SchoolClassRepository classRepository;
+    private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
     private final AccessControlService accessControl;
     private final VotingResultService resultService;
@@ -34,6 +36,7 @@ public class VotingLifecycleService {
             SecretVotingRepository votingRepository,
             VotingOptionRepository optionRepository,
             SchoolClassRepository classRepository,
+            UserRepository userRepository,
             CurrentUserService currentUserService,
             AccessControlService accessControl,
             VotingResultService resultService
@@ -41,6 +44,7 @@ public class VotingLifecycleService {
         this.votingRepository = votingRepository;
         this.optionRepository = optionRepository;
         this.classRepository = classRepository;
+        this.userRepository = userRepository;
         this.currentUserService = currentUserService;
         this.accessControl = accessControl;
         this.resultService = resultService;
@@ -87,7 +91,10 @@ public class VotingLifecycleService {
             VotingOption option = new VotingOption();
             option.setVoting(voting);
             option.setLabel(optionRequest.getLabel().trim());
-            option.setCandidateUserId(optionRequest.getCandidateUserId());
+            if (optionRequest.getCandidateUserId() != null) {
+                option.setCandidateUser(userRepository.findById(optionRequest.getCandidateUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Candidate user was not found")));
+            }
             optionRepository.save(option);
         }
 

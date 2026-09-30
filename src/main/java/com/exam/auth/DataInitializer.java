@@ -130,7 +130,7 @@ public class DataInitializer implements CommandLineRunner {
         exam = examSessionRepository.save(exam);
 
         Question question = new Question();
-        question.setSessionId(exam.getId());
+        question.setSession(exam);
         question.setOrderIndex(1);
         question.setText("1 + 1");
         question.setType(QuestionType.TEXT);

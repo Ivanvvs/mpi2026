@@ -81,7 +81,7 @@ public class ExamResultService {
             Optional<ExamResult> optionalResult = resultRepository.findBySessionIdAndStudentId(sessionId, student.getId());
             ExamResult result = optionalResult.isPresent() ? optionalResult.get() : new ExamResult();
             int violationPenalty = 0;
-            for (com.exam.model.Violation violation : violationRepository.findBySessionIdAndUserId(sessionId, student.getId())) {
+            for (com.exam.model.Violation violation : violationRepository.findBySession_IdAndUser_Id(sessionId, student.getId())) {
                 if (violation.getPointsPenalty() != null) {
                     violationPenalty += violation.getPointsPenalty();
                 }

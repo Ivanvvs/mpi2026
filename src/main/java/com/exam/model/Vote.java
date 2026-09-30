@@ -13,8 +13,9 @@ public class Vote {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "voting_id", nullable = false)
-    private Long votingId;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "voting_id", nullable = false)
+    private SecretVoting voting;
 
     @Column(name = "encrypted_value", nullable = false)
     private String encryptedValue;
@@ -35,11 +36,15 @@ public class Vote {
     }
 
     public Long getVotingId() {
-        return votingId;
+        return voting == null ? null : voting.getId();
     }
 
-    public void setVotingId(Long votingId) {
-        this.votingId = votingId;
+    public SecretVoting getVoting() {
+        return voting;
+    }
+
+    public void setVoting(SecretVoting voting) {
+        this.voting = voting;
     }
 
     public String getEncryptedValue() {

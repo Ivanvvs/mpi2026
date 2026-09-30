@@ -54,7 +54,7 @@ public class VotingParticipationService {
 
     public List<VotingOption> getOptions(Long votingId) {
         lifecycleService.getVoting(votingId);
-        return optionRepository.findByVotingId(votingId);
+        return optionRepository.findByVoting_Id(votingId);
     }
 
     @Transactional
@@ -85,7 +85,7 @@ public class VotingParticipationService {
         }
 
         Vote vote = new Vote();
-        vote.setVotingId(votingId);
+        vote.setVoting(voting);
         vote.setEncryptedValue(encodeVote(option.getId()));
         vote.setAnonymousVoterHash(hash(votingId + ":" + student.getId()));
         VotingReceipt receipt = new VotingReceipt();
@@ -119,7 +119,7 @@ public class VotingParticipationService {
 
     public List<Vote> getVotes(Long votingId) {
         lifecycleService.getVoting(votingId);
-        return voteRepository.findByVotingId(votingId);
+        return voteRepository.findByVoting_Id(votingId);
     }
 
     public void validateStudentCanViewVoting(SecretVoting voting, User student) {

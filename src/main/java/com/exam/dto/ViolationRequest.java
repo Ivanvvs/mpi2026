@@ -17,8 +17,6 @@ public record ViolationRequest(
 
     public Violation toViolation() {
         Violation violation = new Violation();
-        violation.setSessionId(sessionId);
-        violation.setUserId(userId);
         violation.setType(type);
         violation.setDescription(description);
         violation.setEvidencePath(evidencePath);

@@ -17,7 +17,9 @@ public class VotingOption {
     @Column(nullable = false)
     private String label;
 
-    private Long candidateUserId;
+    @ManyToOne
+    @JoinColumn(name = "candidate_user_id")
+    private User candidateUser;
 
     public Long getId() {
         return id;
@@ -44,10 +46,14 @@ public class VotingOption {
     }
 
     public Long getCandidateUserId() {
-        return candidateUserId;
+        return candidateUser == null ? null : candidateUser.getId();
     }
 
-    public void setCandidateUserId(Long candidateUserId) {
-        this.candidateUserId = candidateUserId;
+    public User getCandidateUser() {
+        return candidateUser;
+    }
+
+    public void setCandidateUser(User candidateUser) {
+        this.candidateUser = candidateUser;
     }
 }

@@ -1,8 +1,6 @@
 package com.exam.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 import static com.exam.util.DateTimeUtils.nowUtc;
@@ -11,7 +9,9 @@ import static com.exam.util.DateTimeUtils.nowUtc;
 @Table(name = "answers")
 public class Answer extends SessionUserEntity {
 
-    private Long questionId;
+    @ManyToOne
+    @JoinColumn(name = "question_id")
+    private Question question;
 
     @Column(length = 2000)
     private String text;
@@ -27,11 +27,15 @@ public class Answer extends SessionUserEntity {
     }
 
     public Long getQuestionId() {
-        return questionId;
+        return question == null ? null : question.getId();
     }
 
-    public void setQuestionId(Long questionId) {
-        this.questionId = questionId;
+    public Question getQuestion() {
+        return question;
+    }
+
+    public void setQuestion(Question question) {
+        this.question = question;
     }
 
     public String getText() {
