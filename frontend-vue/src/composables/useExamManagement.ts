@@ -1,12 +1,12 @@
-import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client'
 import { computed } from 'vue'
-import { WS_URL } from '../services/api'
-import type { Answer, ExamDetails, ExamResult, ExamSession, Role, UserResponse } from '../types/domain'
+import type { ApiClient } from '../services/api'
+import { createExam as createExamRequest, finishExam as finishExamRequest, loadExamDetails as loadExamDetailsRequest, saveAnswer as saveAnswerRequest, saveGrades, startExam as startExamRequest, submitAttempt } from '../services/examApi'
+import { connectExamRealtime, disconnectExamRealtime } from '../services/examRealtime'
+import { reportViolation as reportViolationRequest } from '../services/violationApi'
+import type { ExamDetails, ExamSession, Role, UserResponse } from '../types/domain'
 import { parseServerDateTime, toServerDateTimeValue } from './schoolAppFormatters'
 import { parseExamQuestionsText } from './examQuestionParser'
 
-type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>
 type MessageKind = 'info' | 'success' | 'error'
 type RefLike<T> = { value: T }
 
@@ -218,17 +218,14 @@ export function useExamManagement(options: UseExamManagementOptions) {
         throw new Error('Прикрепите .txt файл с заданиями')
       }
 
-      await api<ExamSession>('/exam/session', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: examForm.subject,
-          subject: examForm.subject,
-          classId: examForm.classId,
-          description: examForm.description,
-          durationMinutes,
-          scheduledStartTime: toServerDateTimeValue(scheduledStartTime),
-          questions
-        })
+      await createExamRequest(api, {
+        title: examForm.subject,
+        subject: examForm.subject,
+        classId: examForm.classId,
+        description: examForm.description,
+        durationMinutes,
+        scheduledStartTime: toServerDateTimeValue(scheduledStartTime),
+        questions
       })
       await loadExams()
       resetExamForm()
@@ -285,7 +282,7 @@ export function useExamManagement(options: UseExamManagementOptions) {
   async function loadExamDetails(id: number, preserveQuestionIndex = false, reconnectSocket = false) {
     const previousIndex = currentQuestionIndex.value
     const previousMonitorStudentId = selectedMonitorStudentId.value
-    selectedExam.value = await api<ExamDetails>(`/exam/session/${id}/details`)
+    selectedExam.value = await loadExamDetailsRequest(api, id)
     localStorage.setItem('school-selected-exam-id', String(id))
     currentQuestionIndex.value = preserveQuestionIndex
       ? Math.min(previousIndex, Math.max(selectedExam.value.questions.length - 1, 0))
@@ -309,14 +306,14 @@ export function useExamManagement(options: UseExamManagementOptions) {
   }
 
   async function startExam(id: number) {
-    await api<ExamSession>(`/exam/session/start/${id}`, { method: 'POST' })
+    await startExamRequest(api, id)
     await loadExams()
     await openExam(id)
     setMessage('Экзамен запущен', 'success')
   }
 
   async function finishExam(id: number) {
-    await api<ExamSession>(`/exam/session/end/${id}`, { method: 'POST' })
+    await finishExamRequest(api, id)
     await loadExams()
     await openExam(id)
     setMessage('Экзамен завершен', 'success')
@@ -328,12 +325,9 @@ export function useExamManagement(options: UseExamManagementOptions) {
     for (const question of selectedExam.value.questions) {
       const text = answerDrafts[question.id]?.trim()
       if (!text) continue
-      await api<Answer>(`/exam/session/${examId}/answers/me`, {
-        method: 'POST',
-        body: JSON.stringify({ questionId: question.id, text, finalSubmitted: false })
-      })
+      await saveAnswerRequest(api, examId, question.id, text)
     }
-    await api(`/exam/session/${examId}/attempt/me/submit`, { method: 'POST' })
+    await submitAttempt(api, examId)
     await loadExams()
     selectedExam.value = null
     currentPage.value = 'exams'
@@ -365,10 +359,7 @@ export function useExamManagement(options: UseExamManagementOptions) {
   async function saveAnswer(questionId: number, text: string) {
     if (!selectedExam.value) return
 
-    await api<Answer>(`/exam/session/${selectedExam.value.exam.id}/answers/me`, {
-      method: 'POST',
-      body: JSON.stringify({ questionId, text, finalSubmitted: false })
-    })
+    await saveAnswerRequest(api, selectedExam.value.exam.id, questionId, text)
   }
 
   async function autosaveCurrentAnswer() {
@@ -413,15 +404,12 @@ export function useExamManagement(options: UseExamManagementOptions) {
     reportedClientViolations.add(key)
 
     try {
-      await api('/violations/report/me', {
-        method: 'POST',
-        body: JSON.stringify({
-          sessionId: selectedExam.value.exam.id,
-          type,
-          description,
-          pointsPenalty: 0
-        })
-      })
+      await reportViolationRequest(api, {
+        sessionId: selectedExam.value.exam.id,
+        type,
+        description,
+        pointsPenalty: 0
+      }, true)
     } catch {
       reportedClientViolations.delete(key)
     }
@@ -455,15 +443,12 @@ export function useExamManagement(options: UseExamManagementOptions) {
     }
 
     try {
-      await api('/violations/report', {
-        method: 'POST',
-        body: JSON.stringify({
-          sessionId: selectedExam.value.exam.id,
-          userId: violationForm.userId,
-          type: 'EXAM_RULE_VIOLATION',
-          description: violationForm.description,
-          pointsPenalty: Number(violationForm.pointsPenalty || 0)
-        })
+      await reportViolationRequest(api, {
+        sessionId: selectedExam.value.exam.id,
+        userId: violationForm.userId,
+        type: 'EXAM_RULE_VIOLATION',
+        description: violationForm.description,
+        pointsPenalty: Number(violationForm.pointsPenalty || 0)
       })
       Object.assign(violationForm, { userId: null, description: '', pointsPenalty: 0 })
       setMessage('Нарушение зафиксировано', 'success')
@@ -478,22 +463,17 @@ export function useExamManagement(options: UseExamManagementOptions) {
       studentId: student.id,
       rawScore: Number(gradeForm[student.id] || 0)
     }))
-    await api<ExamResult[]>(`/exam/session/${selectedExam.value.exam.id}/grades`, {
-      method: 'POST',
-      body: JSON.stringify({ scores })
-    })
+    await saveGrades(api, selectedExam.value.exam.id, scores)
     await loadClasses()
     await openExam(selectedExam.value.exam.id)
     setMessage('Итоговые баллы сохранены', 'success')
   }
 
   function connectExamSocket(examId: number) {
-    stompClient.value?.deactivate()
+    disconnectExamRealtime(stompClient.value)
     realtimeEvents.value = []
-    const client = new Client({
-      webSocketFactory: () => new SockJS(WS_URL),
-      reconnectDelay: 3000,
-      onConnect: () => {
+    stompClient.value = connectExamRealtime(examId, {
+      onConnected: () => {
         realtimeEvents.value.unshift({
           id: `${Date.now()}-${Math.random()}`,
           type: 'CONNECTED',
@@ -501,29 +481,25 @@ export function useExamManagement(options: UseExamManagementOptions) {
           userName: session.displayName || userNameById(session.userId),
           time: new Date().toLocaleTimeString('ru-RU')
         })
-        client.subscribe(`/topic/exams/${examId}`, async (frame) => {
-          const payload = JSON.parse(frame.body)
-          const userId = typeof payload.userId === 'number' ? payload.userId : null
-          realtimeEvents.value.unshift({
-            id: `${Date.now()}-${Math.random()}`,
-            type: payload.type,
-            userId,
-            userName: userNameById(userId),
-            time: new Date().toLocaleTimeString('ru-RU')
-          })
-          try {
-            await loadExamDetails(examId, true)
-          } catch {
-            // Keep the socket session alive even if background refresh fails.
-          }
-        })
       },
-      onWebSocketError: () => {
+      onMessage: async ({ type, userId }) => {
+        realtimeEvents.value.unshift({
+          id: `${Date.now()}-${Math.random()}`,
+          type,
+          userId,
+          userName: userNameById(userId),
+          time: new Date().toLocaleTimeString('ru-RU')
+        })
+        try {
+          await loadExamDetails(examId, true)
+        } catch {
+          // Keep the socket session alive even if background refresh fails.
+        }
+      },
+      onError: () => {
         setMessage('Не удалось подключиться к WebSocket мониторинга экзамена', 'error')
       }
     })
-    stompClient.value = client
-    client.activate()
   }
 
   function userNameById(userId: number | null) {

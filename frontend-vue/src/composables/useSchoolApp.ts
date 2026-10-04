@@ -1,5 +1,5 @@
 ﻿import { onMounted, onUnmounted, reactive, watch } from 'vue'
-import { createSchoolApiClient } from './schoolApiClient'
+import { createApiClient } from '../services/api'
 import { formatDateTime, formatNumber, totalVotes } from './schoolAppFormatters'
 import { roleLabel, statusLabel, userFilters } from './schoolAppLabels'
 import { createSchoolAppState } from './schoolAppState'
@@ -56,7 +56,7 @@ export function useSchoolApp() {
     votingDurationMinutes,
     violationForm
   } = createSchoolAppState()
-  const api = createSchoolApiClient(session)
+  const api = createApiClient(session)
   const {
     currentMenu,
     activeExams,
