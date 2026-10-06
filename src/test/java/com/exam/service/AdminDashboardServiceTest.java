@@ -129,7 +129,13 @@ class AdminDashboardServiceTest {
         assertThat(classRankPolicy.resolve(120)).isEqualTo(ClassRank.C);
         assertThat(classRankPolicy.resolve(300)).isEqualTo(ClassRank.B);
         assertThat(classRankPolicy.resolve(500)).isEqualTo(ClassRank.A);
+        assertThat(classRankPolicy.minimumPointsFor(ClassRank.D)).isZero();
+        assertThat(classRankPolicy.minimumPointsFor(ClassRank.C)).isEqualTo(120);
+        assertThat(classRankPolicy.minimumPointsFor(ClassRank.B)).isEqualTo(300);
+        assertThat(classRankPolicy.minimumPointsFor(ClassRank.A)).isEqualTo(500);
         assertThat(classRankPolicy.nextHigherRank(ClassRank.D)).isEqualTo(ClassRank.C);
+        assertThat(classRankPolicy.nextHigherRank(ClassRank.C)).isEqualTo(ClassRank.B);
+        assertThat(classRankPolicy.nextHigherRank(ClassRank.B)).isEqualTo(ClassRank.A);
         assertThat(classRankPolicy.nextHigherRank(ClassRank.A)).isNull();
     }
 
@@ -148,6 +154,17 @@ class AdminDashboardServiceTest {
         assertThat(details.calculatedStudentsSPoints()).isEqualTo(expectedStudentsTotal);
         assertThat(details.nextHigherRank()).isEqualTo(ClassRank.A);
         assertThat(details.pointsToNextHigherRank()).isEqualTo(150);
+    }
+
+    @Test
+    void nonAdminCannotConfirmOrReadRankDetails() {
+        SchoolClass schoolClass = classRepository.findByName("10A").orElseThrow();
+        authenticateAs("student");
+
+        assertThatThrownBy(() -> dashboardService.confirmRankUpdate(schoolClass.getId()))
+                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> dashboardService.getRankDetails(schoolClass.getId()))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     private void authenticateAs(String username) {
