@@ -150,10 +150,10 @@ export function useSchoolApp() {
 
   const {
     pendingRankUpdates,
+    selectedRankClassId,
     selectedRankClass,
     rankDetails,
     refreshRankPreview,
-    confirmRankUpdates,
     selectRankUpdate,
     loadRankDetails,
     confirmRankUpdate,
@@ -396,6 +396,7 @@ export function useSchoolApp() {
     curatorPrivilegeRequests,
     examinerHomeRows,
     pendingRankUpdates,
+    selectedRankClassId,
     selectedRankClass,
     rankDetails,
     examQuestionCount,
@@ -422,7 +423,6 @@ export function useSchoolApp() {
     refreshCurrent,
     openPage,
     refreshRankPreview,
-    confirmRankUpdates,
     selectRankUpdate,
     loadRankDetails,
     confirmRankUpdate,

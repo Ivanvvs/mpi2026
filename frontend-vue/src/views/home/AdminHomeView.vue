@@ -31,6 +31,7 @@
                     <th>Текущий ранг</th>
                     <th>Новый ранг</th>
                     <th>Учеников</th>
+                    <th>Действие</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -60,6 +61,7 @@
                 </div>
                 <div v-if="app.rankDetails" class="rank-details">
                   <p>Минимум для ранга {{ app.rankDetails.proposedRank }}: {{ app.rankDetails.proposedRankMinimumSPoints }}</p>
+                  <p>Сумма S-очков активных учеников: {{ app.rankDetails.calculatedStudentsSPoints }}</p>
                   <p v-if="app.rankDetails.nextHigherRank">До ранга {{ app.rankDetails.nextHigherRank }}: {{ app.rankDetails.pointsToNextHigherRank }} S-очков</p>
                   <table>
                     <thead><tr><th>Ученик</th><th>S-очки</th></tr></thead>
@@ -69,13 +71,6 @@
               </section>
               <div class="quick-actions">
                 <button class="secondary wide-action" @click="app.refreshRankPreview">Обновить ранги</button>
-                <button
-                  v-if="false"
-                  class="primary wide-action"
-                  @click="app.confirmRankUpdates"
-                >
-                  Подтвердить ранги
-                </button>
               </div>
               <p v-if="app.rankPreviewVisible && !app.pendingRankUpdates.length" class="muted">Изменений рангов не требуется.</p>
               <table v-if="app.rankPreviewVisible && app.pendingRankUpdates.length" class="ranking-table">
