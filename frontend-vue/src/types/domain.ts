@@ -162,11 +162,12 @@ export interface RankDetails {
   proposedRankMinimumSPoints: number
   nextHigherRank?: string | null
   pointsToNextHigherRank?: number | null
+  calculatedStudentsSPoints: number
   students: RankDetailsStudent[]
 }
 
 export interface RankedClass {
-  id?: number
+  id: number
   name: string
   rank?: string
   proposedRank?: string

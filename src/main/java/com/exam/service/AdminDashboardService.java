@@ -95,11 +95,15 @@ public class AdminDashboardService {
                 .stream()
                 .map(RankDetailsStudentResponse::from)
                 .toList();
+        int calculatedStudentsSPoints = students.stream()
+                .mapToInt(RankDetailsStudentResponse::sPoints)
+                .sum();
 
         return new RankDetailsResponse(
                 schoolClass.getId(), schoolClass.getName(), schoolClass.getRank(), proposedRank,
                 schoolClass.getsPoints(), proposedRank != schoolClass.getRank(),
-                classRankPolicy.minimumPointsFor(proposedRank), nextHigherRank, pointsToNextHigherRank, students
+                classRankPolicy.minimumPointsFor(proposedRank), nextHigherRank, pointsToNextHigherRank,
+                calculatedStudentsSPoints, students
         );
     }
 

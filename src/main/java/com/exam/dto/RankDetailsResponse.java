@@ -14,6 +14,7 @@ public record RankDetailsResponse(
         int proposedRankMinimumSPoints,
         ClassRank nextHigherRank,
         Integer pointsToNextHigherRank,
+        int calculatedStudentsSPoints,
         List<RankDetailsStudentResponse> students
 ) {
 }

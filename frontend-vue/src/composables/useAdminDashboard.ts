@@ -2,7 +2,7 @@ import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { computed, ref } from 'vue'
 import { WS_URL } from '../services/api'
-import type { AdminDashboardResponse, Page, RankDetails, RankedClass, Role, SchoolClass } from '../types/domain'
+import type { AdminDashboardResponse, Page, RankDetails, Role, SchoolClass } from '../types/domain'
 
 type ApiClient = <T>(path: string, options?: RequestInit) => Promise<T>
 type MessageKind = 'info' | 'success' | 'error'
@@ -39,7 +39,8 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
   } = options
 
   const pendingRankUpdates = computed(() => classes.value.filter((schoolClass) => schoolClass.rankChangeRequired))
-  const selectedRankClass = ref<RankedClass | null>(null)
+  const selectedRankClassId = ref<number | null>(null)
+  const selectedRankClass = computed(() => classes.value.find((schoolClass) => schoolClass.id === selectedRankClassId.value) ?? null)
   const rankDetails = ref<RankDetails | null>(null)
 
   async function loadAdminDashboard() {
@@ -59,24 +60,8 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
     )
   }
 
-  async function confirmRankUpdates() {
-    const classIds = pendingRankUpdates.value.map((schoolClass) => schoolClass.id)
-    if (!classIds.length) {
-      setMessage('Нет рангов для подтверждения', 'info')
-      return
-    }
-
-    const response = await api<AdminDashboardResponse>('/admin/dashboard/ranks/confirm', {
-      method: 'POST',
-      body: JSON.stringify({ classIds })
-    })
-    classes.value = response.classes
-    rankPreviewVisible.value = false
-    setMessage('Ранги классов подтверждены', 'success')
-  }
-
-  function selectRankUpdate(schoolClass: RankedClass) {
-    selectedRankClass.value = schoolClass
+  function selectRankUpdate(schoolClass: Pick<SchoolClass, 'id'>) {
+    selectedRankClassId.value = schoolClass.id
     rankDetails.value = null
   }
 
@@ -96,7 +81,7 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
       { method: 'POST' }
     )
     classes.value = response.classes
-    selectedRankClass.value = null
+    selectedRankClassId.value = null
     rankDetails.value = null
     rankPreviewVisible.value = false
     setMessage(`Ранг класса ${schoolClass.name} обновлён`, 'success')
@@ -112,7 +97,31 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
       onConnect: () => {
         client.subscribe('/topic/admin/dashboard', (frame) => {
           const payload = JSON.parse(frame.body) as AdminDashboardResponse
+          const previousClasses = classes.value
+          const changedClasses = payload.classes.filter((nextClass) => {
+            const previousClass = previousClasses.find((item) => item.id === nextClass.id)
+            return previousClass && (
+              previousClass.sPoints !== nextClass.sPoints ||
+              (!previousClass.rankChangeRequired && nextClass.rankChangeRequired)
+            )
+          })
           classes.value = payload.classes
+          if (selectedRankClass.value && !selectedRankClass.value.rankChangeRequired) {
+            selectedRankClassId.value = null
+            rankDetails.value = null
+          }
+          if (changedClasses.length === 1) {
+            const changedClass = changedClasses[0]
+            const previousClass = previousClasses.find((item) => item.id === changedClass.id)
+            setMessage(
+              previousClass?.sPoints !== changedClass.sPoints
+                ? `S-очки класса ${changedClass.name} изменились. Требуется проверить ранг.`
+                : `Для класса ${changedClass.name} требуется проверить ранг.`,
+              'info'
+            )
+          } else if (changedClasses.length > 1) {
+            setMessage('Изменились S-очки нескольких классов. Требуется проверить ранги.', 'info')
+          }
         })
       },
       onWebSocketError: () => {
@@ -131,11 +140,11 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
 
   return {
     pendingRankUpdates,
+    selectedRankClassId,
     selectedRankClass,
     rankDetails,
     loadAdminDashboard,
     refreshRankPreview,
-    confirmRankUpdates,
     selectRankUpdate,
     loadRankDetails,
     confirmRankUpdate,
