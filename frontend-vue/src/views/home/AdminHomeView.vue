@@ -41,13 +41,36 @@
                     <td>{{ schoolClass.rank }}</td>
                     <td :class="schoolClass.rankChangeRequired ? 'positive' : ''">{{ schoolClass.proposedRank || schoolClass.rank }}</td>
                     <td>{{ schoolClass.studentCount ?? '-' }}</td>
+                    <td>
+                      <button v-if="schoolClass.rankChangeRequired" class="secondary compact" @click="app.selectRankUpdate(schoolClass)">
+                        Рассмотреть изменение
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
+              <section v-if="app.selectedRankClass" class="panel rank-update-panel">
+                <h3>Обновление ранга: {{ app.selectedRankClass.name }}</h3>
+                <p>S-очки: <strong>{{ app.formatNumber(app.selectedRankClass.sPoints) }}</strong></p>
+                <p>Текущий ранг: <strong>{{ app.selectedRankClass.rank }}</strong></p>
+                <p>Предлагаемый ранг: <strong class="positive">{{ app.selectedRankClass.proposedRank }}</strong></p>
+                <div class="inline-actions">
+                  <button class="secondary" @click="app.loadRankDetails">Подробнее</button>
+                  <button class="primary" @click="app.confirmRankUpdate">Подтвердить обновление ранга</button>
+                </div>
+                <div v-if="app.rankDetails" class="rank-details">
+                  <p>Минимум для ранга {{ app.rankDetails.proposedRank }}: {{ app.rankDetails.proposedRankMinimumSPoints }}</p>
+                  <p v-if="app.rankDetails.nextHigherRank">До ранга {{ app.rankDetails.nextHigherRank }}: {{ app.rankDetails.pointsToNextHigherRank }} S-очков</p>
+                  <table>
+                    <thead><tr><th>Ученик</th><th>S-очки</th></tr></thead>
+                    <tbody><tr v-for="student in app.rankDetails.students" :key="student.studentId"><td>{{ student.fullName }}</td><td>{{ student.sPoints }}</td></tr></tbody>
+                  </table>
+                </div>
+              </section>
               <div class="quick-actions">
                 <button class="secondary wide-action" @click="app.refreshRankPreview">Обновить ранги</button>
                 <button
-                  v-if="app.rankPreviewVisible && app.pendingRankUpdates.length"
+                  v-if="false"
                   class="primary wide-action"
                   @click="app.confirmRankUpdates"
                 >

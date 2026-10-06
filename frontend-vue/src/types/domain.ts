@@ -146,6 +146,25 @@ export interface AdminDashboardResponse {
   classes: SchoolClass[]
 }
 
+export interface RankDetailsStudent {
+  studentId: number
+  fullName: string
+  sPoints: number
+}
+
+export interface RankDetails {
+  classId: number
+  className: string
+  currentRank: string
+  proposedRank: string
+  totalSPoints: number
+  rankChangeRequired: boolean
+  proposedRankMinimumSPoints: number
+  nextHigherRank?: string | null
+  pointsToNextHigherRank?: number | null
+  students: RankDetailsStudent[]
+}
+
 export interface RankedClass {
   id?: number
   name: string

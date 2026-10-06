@@ -4,6 +4,9 @@ import com.exam.auth.Role;
 import com.exam.dto.AdminDashboardClassResponse;
 import com.exam.dto.AdminDashboardResponse;
 import com.exam.dto.ConfirmRankUpdatesRequest;
+import com.exam.dto.RankDetailsResponse;
+import com.exam.dto.RankDetailsStudentResponse;
+import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ClassRank;
 import com.exam.model.SchoolClass;
 import com.exam.realtime.AdminDashboardRealtimePublisher;
@@ -65,6 +68,41 @@ public class AdminDashboardService {
         return response;
     }
 
+    @Transactional
+    public AdminDashboardResponse confirmRankUpdate(Long classId) {
+        assertAdmin();
+        SchoolClass schoolClass = findClass(classId);
+        ClassRank proposedRank = classRankPolicy.resolve(schoolClass.getsPoints());
+        if (proposedRank != schoolClass.getRank()) {
+            schoolClass.setRank(proposedRank);
+            classRepository.save(schoolClass);
+        }
+
+        AdminDashboardResponse response = buildDashboardResponse();
+        realtimePublisher.publish(response);
+        return response;
+    }
+
+    public RankDetailsResponse getRankDetails(Long classId) {
+        assertAdmin();
+        SchoolClass schoolClass = findClass(classId);
+        ClassRank proposedRank = classRankPolicy.resolve(schoolClass.getsPoints());
+        ClassRank nextHigherRank = classRankPolicy.nextHigherRank(proposedRank);
+        Integer pointsToNextHigherRank = nextHigherRank == null
+                ? null
+                : Math.max(0, classRankPolicy.minimumPointsFor(nextHigherRank) - schoolClass.getsPoints());
+        List<RankDetailsStudentResponse> students = userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId())
+                .stream()
+                .map(RankDetailsStudentResponse::from)
+                .toList();
+
+        return new RankDetailsResponse(
+                schoolClass.getId(), schoolClass.getName(), schoolClass.getRank(), proposedRank,
+                schoolClass.getsPoints(), proposedRank != schoolClass.getRank(),
+                classRankPolicy.minimumPointsFor(proposedRank), nextHigherRank, pointsToNextHigherRank, students
+        );
+    }
+
     public void publishDashboardUpdate() {
         realtimePublisher.publish(buildDashboardResponse());
     }
@@ -88,6 +126,11 @@ public class AdminDashboardService {
                 classRankPolicy.resolve(schoolClass.getsPoints()),
                 studentCount
         );
+    }
+
+    private SchoolClass findClass(Long classId) {
+        return classRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("School class not found: " + classId));
     }
 
     private void assertAdmin() {
