@@ -23,6 +23,23 @@ public class ClassRankPolicy {
                 .orElse(ClassRank.D);
     }
 
+    public int minimumPointsFor(ClassRank rank) {
+        return thresholds.stream()
+                .filter(threshold -> threshold.rank() == rank)
+                .findFirst()
+                .map(RankThreshold::minPoints)
+                .orElse(0);
+    }
+
+    public ClassRank nextHigherRank(ClassRank rank) {
+        for (int index = thresholds.size() - 1; index > 0; index--) {
+            if (thresholds.get(index).rank() == rank) {
+                return thresholds.get(index - 1).rank();
+            }
+        }
+        return null;
+    }
+
     private record RankThreshold(int minPoints, ClassRank rank) {
     }
 }

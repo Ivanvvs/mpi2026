@@ -150,8 +150,13 @@ export function useSchoolApp() {
 
   const {
     pendingRankUpdates,
+    selectedRankClass,
+    rankDetails,
     refreshRankPreview,
     confirmRankUpdates,
+    selectRankUpdate,
+    loadRankDetails,
+    confirmRankUpdate,
     connectAdminDashboardSocket,
     disconnectAdminDashboardSocket
   } = useAdminDashboard({
@@ -391,6 +396,8 @@ export function useSchoolApp() {
     curatorPrivilegeRequests,
     examinerHomeRows,
     pendingRankUpdates,
+    selectedRankClass,
+    rankDetails,
     examQuestionCount,
     currentQuestion,
     currentExamSubmitted,
@@ -416,6 +423,9 @@ export function useSchoolApp() {
     openPage,
     refreshRankPreview,
     confirmRankUpdates,
+    selectRankUpdate,
+    loadRankDetails,
+    confirmRankUpdate,
     resetRegisterForm,
     registerUser,
     editUser,

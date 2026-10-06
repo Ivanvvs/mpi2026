@@ -243,6 +243,15 @@ h3 {
   margin-top: 28px;
 }
 
+.rank-update-panel,
+.rank-details {
+  margin-top: 18px;
+}
+
+.rank-details table {
+  margin-top: 12px;
+}
+
 .ranking-table td,
 .ranking-table th {
   font-size: 17px;
