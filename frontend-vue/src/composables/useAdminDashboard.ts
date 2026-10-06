@@ -67,24 +67,32 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
 
   async function loadRankDetails() {
     if (!selectedRankClass.value?.id) return
-    rankDetails.value = await api<RankDetails>(
-      `/admin/dashboard/classes/${selectedRankClass.value.id}/rank-details`
-    )
+    try {
+      rankDetails.value = await api<RankDetails>(
+        `/admin/dashboard/classes/${selectedRankClass.value.id}/rank-details`
+      )
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось загрузить детали ранга', 'error')
+    }
   }
 
   async function confirmRankUpdate() {
     const schoolClass = selectedRankClass.value
     if (!schoolClass?.id) return
 
-    const response = await api<AdminDashboardResponse>(
-      `/admin/dashboard/classes/${schoolClass.id}/rank/confirm`,
-      { method: 'POST' }
-    )
-    classes.value = response.classes
-    selectedRankClassId.value = null
-    rankDetails.value = null
-    rankPreviewVisible.value = false
-    setMessage(`Ранг класса ${schoolClass.name} обновлён`, 'success')
+    try {
+      const response = await api<AdminDashboardResponse>(
+        `/admin/dashboard/classes/${schoolClass.id}/rank/confirm`,
+        { method: 'POST' }
+      )
+      classes.value = response.classes
+      selectedRankClassId.value = null
+      rankDetails.value = null
+      rankPreviewVisible.value = false
+      setMessage(`Ранг класса ${schoolClass.name} обновлён`, 'success')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось обновить ранг класса', 'error')
+    }
   }
 
   function connectAdminDashboardSocket() {
@@ -98,6 +106,9 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
         client.subscribe('/topic/admin/dashboard', (frame) => {
           const payload = JSON.parse(frame.body) as AdminDashboardResponse
           const previousClasses = classes.value
+          const selectedClassId = selectedRankClassId.value
+          const previousSelectedClass = previousClasses.find((item) => item.id === selectedClassId)
+          const nextSelectedClass = payload.classes.find((item) => item.id === selectedClassId)
           const changedClasses = payload.classes.filter((nextClass) => {
             const previousClass = previousClasses.find((item) => item.id === nextClass.id)
             return previousClass && (
@@ -106,8 +117,15 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
             )
           })
           classes.value = payload.classes
-          if (selectedRankClass.value && !selectedRankClass.value.rankChangeRequired) {
+          if (!nextSelectedClass || !nextSelectedClass.rankChangeRequired) {
             selectedRankClassId.value = null
+            rankDetails.value = null
+          } else if (previousSelectedClass && (
+            previousSelectedClass.sPoints !== nextSelectedClass.sPoints ||
+            previousSelectedClass.rank !== nextSelectedClass.rank ||
+            previousSelectedClass.proposedRank !== nextSelectedClass.proposedRank ||
+            previousSelectedClass.rankChangeRequired !== nextSelectedClass.rankChangeRequired
+          )) {
             rankDetails.value = null
           }
           if (changedClasses.length === 1) {
@@ -115,12 +133,19 @@ export function useAdminDashboard(options: UseAdminDashboardOptions) {
             const previousClass = previousClasses.find((item) => item.id === changedClass.id)
             setMessage(
               previousClass?.sPoints !== changedClass.sPoints
-                ? `S-очки класса ${changedClass.name} изменились. Требуется проверить ранг.`
+                ? changedClass.rankChangeRequired
+                  ? `S-очки класса ${changedClass.name} изменились. Требуется проверить ранг.`
+                  : `S-очки класса ${changedClass.name} изменились.`
                 : `Для класса ${changedClass.name} требуется проверить ранг.`,
               'info'
             )
           } else if (changedClasses.length > 1) {
-            setMessage('Изменились S-очки нескольких классов. Требуется проверить ранги.', 'info')
+            setMessage(
+              changedClasses.some((schoolClass) => schoolClass.rankChangeRequired)
+                ? 'Изменились данные нескольких классов. Требуется проверить ранги.'
+                : 'Изменились S-очки нескольких классов.',
+              'info'
+            )
           }
         })
       },
