@@ -10,5 +10,4 @@ import java.util.List;
 public interface VoteRepository extends JpaRepository<Vote, Long> {
 
     List<Vote> findByVoting_Id(Long votingId);
-    boolean existsByVoting_IdAndAnonymousVoterHash(Long votingId, String anonymousVoterHash);
 }

@@ -57,7 +57,8 @@ public class VotingService {
             participationService.validateStudentCanViewVoting(voting, user);
             hasVoted = participationService.hasCurrentUserVoted(votingId);
         }
-        boolean resultsVisible = voting.getStatus() == com.exam.model.VotingStatus.FINISHED;
+        boolean resultsVisible = voting.getStatus() == com.exam.model.VotingStatus.FINISHED
+                && lifecycleService.canCurrentUserViewResults(voting);
         return new VotingDetailsResponse(
                 com.exam.dto.SecretVotingResponse.from(voting),
                 participationService.getOptions(votingId).stream().map(com.exam.dto.VotingOptionResponse::from).toList(),
@@ -84,7 +85,9 @@ public class VotingService {
     }
 
     public Map<String, Long> getResults(Long votingId) {
-        return resultService.getStoredResults(lifecycleService.getVoting(votingId));
+        SecretVoting voting = lifecycleService.getVoting(votingId);
+        lifecycleService.assertCanViewResults(voting);
+        return resultService.getStoredResults(voting);
     }
 
     public void finishExpiredVotings() {

@@ -12,8 +12,6 @@ import com.exam.repository.VotingResultRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +42,7 @@ public class VotingResultService {
         Map<Long, Long> counts = new LinkedHashMap<>();
         options.forEach(option -> counts.put(option.getId(), 0L));
         for (Vote vote : voteRepository.findByVoting_Id(voting.getId())) {
-            Long optionId = decodeVote(vote.getEncryptedValue());
+            Long optionId = vote.getOption().getId();
             if (counts.containsKey(optionId)) {
                 counts.computeIfPresent(optionId, (ignored, count) -> count + 1);
             }
@@ -71,8 +69,4 @@ public class VotingResultService {
         return results;
     }
 
-    private Long decodeVote(String encryptedValue) {
-        String decoded = new String(Base64.getDecoder().decode(encryptedValue), StandardCharsets.UTF_8);
-        return Long.valueOf(decoded);
-    }
 }

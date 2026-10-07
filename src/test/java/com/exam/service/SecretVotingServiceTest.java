@@ -1,6 +1,5 @@
 package com.exam.service;
 
-import com.exam.auth.AppUserRepository;
 import com.exam.dto.CreateVotingRequest;
 import com.exam.dto.VotingOptionRequest;
 import com.exam.exception.BadRequestException;
@@ -13,7 +12,6 @@ import com.exam.model.VotingStatus;
 import com.exam.repository.VotingResultRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.SecretVotingRepository;
-import com.exam.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,8 +42,6 @@ class SecretVotingServiceTest {
     private final VotingService votingService;
     private final SchoolClassRepository classRepository;
     private final SecretVotingRepository votingRepository;
-    private final UserRepository userRepository;
-    private final AppUserRepository accountRepository;
     private final VotingResultRepository resultRepository;
 
     @Autowired
@@ -53,15 +49,11 @@ class SecretVotingServiceTest {
             VotingService votingService,
             SchoolClassRepository classRepository,
             SecretVotingRepository votingRepository,
-            UserRepository userRepository,
-            AppUserRepository accountRepository,
             VotingResultRepository resultRepository
     ) {
         this.votingService = votingService;
         this.classRepository = classRepository;
         this.votingRepository = votingRepository;
-        this.userRepository = userRepository;
-        this.accountRepository = accountRepository;
         this.resultRepository = resultRepository;
     }
 
@@ -127,17 +119,13 @@ class SecretVotingServiceTest {
         authenticateAs("curator");
         SecretVoting voting = votingService.createVoting(request(ownClass.getId(), nowUtc().plusMinutes(30)));
         VotingOption option = votingService.getOptions(voting.getId()).get(0);
-        Long studentAccountId = accountRepository.findByUsername("student").orElseThrow().getId();
-        Long studentId = userRepository.findByAccountId(studentAccountId).orElseThrow().getId();
-
         authenticateAs("student");
         Vote vote = votingService.submitCurrentUserVote(voting.getId(), option.getId());
 
         assertThat(vote.getVotingId()).isEqualTo(voting.getId());
-        assertThat(vote.getEncryptedValue()).isNotBlank();
-        assertThat(vote.getAnonymousVoterHash())
-                .isNotEqualTo(String.valueOf(studentId))
-                .isNotEqualTo(voting.getId() + ":" + studentId);
+        assertThat(vote.getOption().getId()).isEqualTo(option.getId());
+        // Vote has no voter field; the only student association is kept in
+        // VotingReceipt and is never linked back to the Vote.
 
         authenticateAs("curator");
         votingService.finishVoting(voting.getId());
