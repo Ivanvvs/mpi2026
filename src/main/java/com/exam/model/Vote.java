@@ -3,10 +3,7 @@ package com.exam.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(
-        name = "votes",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"voting_id", "anonymous_voter_hash"})
-)
+@Table(name = "votes")
 public class Vote {
 
     @Id
@@ -17,11 +14,13 @@ public class Vote {
     @JoinColumn(name = "voting_id", nullable = false)
     private SecretVoting voting;
 
-    @Column(name = "encrypted_value", nullable = false)
-    private String encryptedValue;
-
-    @Column(name = "anonymous_voter_hash", nullable = false)
-    private String anonymousVoterHash;
+    /**
+     * Deliberately has no relationship to the voter or to VotingReceipt.
+     * A vote can therefore be counted without being attributable to a student.
+     */
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "option_id", nullable = false)
+    private VotingOption option;
 
     public Vote() {
         // Required by JPA.
@@ -47,19 +46,11 @@ public class Vote {
         this.voting = voting;
     }
 
-    public String getEncryptedValue() {
-        return encryptedValue;
+    public VotingOption getOption() {
+        return option;
     }
 
-    public void setEncryptedValue(String encryptedValue) {
-        this.encryptedValue = encryptedValue;
-    }
-
-    public String getAnonymousVoterHash() {
-        return anonymousVoterHash;
-    }
-
-    public void setAnonymousVoterHash(String anonymousVoterHash) {
-        this.anonymousVoterHash = anonymousVoterHash;
+    public void setOption(VotingOption option) {
+        this.option = option;
     }
 }

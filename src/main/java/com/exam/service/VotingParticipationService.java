@@ -10,7 +10,6 @@ import com.exam.model.Vote;
 import com.exam.model.VotingOption;
 import com.exam.model.VotingReceipt;
 import com.exam.model.VotingStatus;
-import com.exam.repository.UserRepository;
 import com.exam.repository.VoteRepository;
 import com.exam.repository.VotingOptionRepository;
 import com.exam.repository.VotingReceiptRepository;
@@ -18,10 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.List;
 
 import static com.exam.util.DateTimeUtils.nowUtc;
@@ -33,7 +28,6 @@ public class VotingParticipationService {
     private final VoteRepository voteRepository;
     private final VotingOptionRepository optionRepository;
     private final VotingReceiptRepository receiptRepository;
-    private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
 
     public VotingParticipationService(
@@ -41,14 +35,12 @@ public class VotingParticipationService {
             VoteRepository voteRepository,
             VotingOptionRepository optionRepository,
             VotingReceiptRepository receiptRepository,
-            UserRepository userRepository,
             CurrentUserService currentUserService
     ) {
         this.lifecycleService = lifecycleService;
         this.voteRepository = voteRepository;
         this.optionRepository = optionRepository;
         this.receiptRepository = receiptRepository;
-        this.userRepository = userRepository;
         this.currentUserService = currentUserService;
     }
 
@@ -59,6 +51,19 @@ public class VotingParticipationService {
 
     @Transactional
     public Vote submitVote(Long votingId, SubmitVoteRequest request) {
+        User currentUser = currentUserService.getProfile();
+        if (!currentUser.getId().equals(request.getStudentId())) {
+            throw new BadRequestException("A student can only submit their own vote");
+        }
+        return submitVoteForStudent(votingId, request.getOptionId(), currentUser);
+    }
+
+    @Transactional
+    public Vote submitCurrentUserVote(Long votingId, Long optionId) {
+        return submitVoteForStudent(votingId, optionId, currentUserService.getProfile());
+    }
+
+    private Vote submitVoteForStudent(Long votingId, Long optionId, User student) {
         SecretVoting voting = lifecycleService.getVotingForUpdate(votingId);
 
         if (voting.getStatus() != VotingStatus.ACTIVE) {
@@ -70,11 +75,9 @@ public class VotingParticipationService {
             throw new BadRequestException("Voting time is over");
         }
 
-        User student = userRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Student was not found"));
         validateStudentCanVote(voting, student);
 
-        VotingOption option = optionRepository.findById(request.getOptionId())
+        VotingOption option = optionRepository.findById(optionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Voting option was not found"));
         if (!option.getVoting().getId().equals(votingId)) {
             throw new BadRequestException("Voting option does not belong to this voting");
@@ -86,8 +89,7 @@ public class VotingParticipationService {
 
         Vote vote = new Vote();
         vote.setVoting(voting);
-        vote.setEncryptedValue(encodeVote(option.getId()));
-        vote.setAnonymousVoterHash(hash(votingId + ":" + student.getId()));
+        vote.setOption(option);
         VotingReceipt receipt = new VotingReceipt();
         receipt.setVoting(voting);
         receipt.setStudent(student);
@@ -101,15 +103,6 @@ public class VotingParticipationService {
         }
 
         return vote;
-    }
-
-    @Transactional
-    public Vote submitCurrentUserVote(Long votingId, Long optionId) {
-        User user = currentUserService.getProfile();
-        SubmitVoteRequest request = new SubmitVoteRequest();
-        request.setStudentId(user.getId());
-        request.setOptionId(optionId);
-        return submitVote(votingId, request);
     }
 
     public boolean hasCurrentUserVoted(Long votingId) {
@@ -159,17 +152,4 @@ public class VotingParticipationService {
         }
     }
 
-    private String encodeVote(Long optionId) {
-        return Base64.getEncoder().encodeToString(String.valueOf(optionId).getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String hash(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(bytes);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is not available", exception);
-        }
-    }
 }

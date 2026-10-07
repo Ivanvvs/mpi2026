@@ -140,7 +140,7 @@ public class VotingLifecycleService {
                     .map(this::finishIfExpired)
                     .toList();
         }
-        if (user.getSchoolClass() == null) {
+        if (role != Role.STUDENT || !user.isActive() || user.getSchoolClass() == null) {
             return List.of();
         }
         return votingRepository.findBySchoolClassId(user.getSchoolClass().getId()).stream()
@@ -176,6 +176,16 @@ public class VotingLifecycleService {
                 .orElseThrow(() -> new ResourceNotFoundException("Voting was not found"));
     }
 
+    public boolean canCurrentUserViewResults(SecretVoting voting) {
+        return accessControl.hasRole(Role.ADMIN)
+                || (accessControl.hasRole(Role.CURATOR) && accessControl.owns(voting.getCreatedBy()));
+    }
+
+    public void assertCanViewResults(SecretVoting voting) {
+        accessControl.require(canCurrentUserViewResults(voting),
+                "Current user cannot view results of this voting");
+    }
+
     private SecretVoting completeVoting(SecretVoting voting, java.time.LocalDateTime finishedAt) {
         if (voting.getStatus() == VotingStatus.FINISHED) {
             return voting;
@@ -192,7 +202,8 @@ public class VotingLifecycleService {
         boolean allowed = role == Role.ADMIN
                 || (role == Role.CURATOR
                 && (accessControl.owns(voting.getCreatedBy()) || accessControl.belongsToClass(voting.getSchoolClass())))
-                || (role == Role.STUDENT && accessControl.belongsToClass(voting.getSchoolClass()));
+                || (role == Role.STUDENT && accessControl.currentProfile().isActive()
+                && accessControl.belongsToClass(voting.getSchoolClass()));
         accessControl.require(allowed, "Current user cannot access this voting");
     }
 
@@ -213,7 +224,9 @@ public class VotingLifecycleService {
     private void assertCanViewClassVotings(Long classId) {
         Role role = accessControl.currentRole();
         boolean allowed = role == Role.ADMIN
-                || ((role == Role.STUDENT || role == Role.CURATOR) && accessControl.belongsToClass(classId));
+                || ((role == Role.STUDENT || role == Role.CURATOR)
+                && accessControl.currentProfile().isActive()
+                && accessControl.belongsToClass(classId));
         accessControl.require(allowed, "Current user cannot access votings for this class");
     }
 }
