@@ -2,6 +2,7 @@ package com.exam.service;
 
 import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
+import com.exam.event.ClassRankUpdatedEvent;
 import com.exam.model.ClassRank;
 import com.exam.model.SchoolClass;
 import com.exam.model.User;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,10 +46,13 @@ class AdminDashboardServiceTest {
     private ClassRankPolicy classRankPolicy;
     @Autowired
     private TrackingAdminDashboardRealtimePublisher realtimePublisher;
+    @Autowired
+    private ClassRankEventTracker classRankEventTracker;
 
     @BeforeEach
     void resetPublisher() {
         realtimePublisher.reset();
+        classRankEventTracker.reset();
     }
 
     @AfterEach
@@ -84,7 +89,8 @@ class AdminDashboardServiceTest {
 
         assertThat(selected.getRank()).isEqualTo(ClassRank.A);
         assertThat(untouched.getRank()).isEqualTo(ClassRank.D);
-        assertThat(realtimePublisher.publishCount()).isEqualTo(1);
+        assertThat(classRankEventTracker.eventCount()).isEqualTo(1);
+        assertThat(realtimePublisher.publishCount()).isZero();
     }
 
     @Test
@@ -180,6 +186,11 @@ class AdminDashboardServiceTest {
         TrackingAdminDashboardRealtimePublisher trackingRealtimePublisher(SimpMessagingTemplate messagingTemplate) {
             return new TrackingAdminDashboardRealtimePublisher(messagingTemplate);
         }
+
+        @Bean
+        ClassRankEventTracker classRankEventTracker() {
+            return new ClassRankEventTracker();
+        }
     }
 
     static class TrackingAdminDashboardRealtimePublisher extends AdminDashboardRealtimePublisher {
@@ -200,6 +211,23 @@ class AdminDashboardServiceTest {
 
         int publishCount() {
             return publishCount;
+        }
+    }
+
+    static class ClassRankEventTracker {
+        private int eventCount;
+
+        @EventListener
+        void onClassRankUpdated(ClassRankUpdatedEvent event) {
+            eventCount++;
+        }
+
+        void reset() {
+            eventCount = 0;
+        }
+
+        int eventCount() {
+            return eventCount;
         }
     }
 }

@@ -15,7 +15,9 @@ import com.exam.repository.ExamResultRepository;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
 import com.exam.repository.ViolationRepository;
-import com.exam.realtime.ExamRealtimePublisher;
+import com.exam.event.AdminDashboardRefreshRequestedEvent;
+import com.exam.event.ExamGradedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,10 +37,9 @@ public class ExamResultService {
     private final ExamResultRepository resultRepository;
     private final ViolationRepository violationRepository;
     private final SchoolClassRepository classRepository;
-    private final ExamRealtimePublisher realtimePublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControl;
     private final SPointService sPointService;
-    private final AdminDashboardService adminDashboardService;
 
     public ExamResultService(
             ExamLifecycleService examLifecycleService,
@@ -46,20 +47,18 @@ public class ExamResultService {
             ExamResultRepository resultRepository,
             ViolationRepository violationRepository,
             SchoolClassRepository classRepository,
-            ExamRealtimePublisher realtimePublisher,
+            ApplicationEventPublisher eventPublisher,
             AccessControlService accessControl,
-            SPointService sPointService,
-            AdminDashboardService adminDashboardService
+            SPointService sPointService
     ) {
         this.examLifecycleService = examLifecycleService;
         this.userRepository = userRepository;
         this.resultRepository = resultRepository;
         this.violationRepository = violationRepository;
         this.classRepository = classRepository;
-        this.realtimePublisher = realtimePublisher;
+        this.eventPublisher = eventPublisher;
         this.accessControl = accessControl;
         this.sPointService = sPointService;
-        this.adminDashboardService = adminDashboardService;
     }
 
     @Transactional
@@ -110,9 +109,8 @@ public class ExamResultService {
         }
 
         sPointService.applyExamResults(session, results);
-        adminDashboardService.publishDashboardUpdate();
-
-        realtimePublisher.publish(sessionId, "EXAM_GRADED", "Exam results have been saved");
+        eventPublisher.publishEvent(new ExamGradedEvent(sessionId));
+        eventPublisher.publishEvent(new AdminDashboardRefreshRequestedEvent());
         return resultRepository.findBySessionId(sessionId);
     }
 

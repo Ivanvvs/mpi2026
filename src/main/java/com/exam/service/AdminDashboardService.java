@@ -9,9 +9,10 @@ import com.exam.dto.RankDetailsStudentResponse;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ClassRank;
 import com.exam.model.SchoolClass;
-import com.exam.realtime.AdminDashboardRealtimePublisher;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.UserRepository;
+import com.exam.event.ClassRankUpdatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,20 +26,20 @@ public class AdminDashboardService {
     private final UserRepository userRepository;
     private final ClassRankPolicy classRankPolicy;
     private final AccessControlService accessControl;
-    private final AdminDashboardRealtimePublisher realtimePublisher;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminDashboardService(
             SchoolClassRepository classRepository,
             UserRepository userRepository,
             ClassRankPolicy classRankPolicy,
             AccessControlService accessControl,
-            AdminDashboardRealtimePublisher realtimePublisher
+            ApplicationEventPublisher eventPublisher
     ) {
         this.classRepository = classRepository;
         this.userRepository = userRepository;
         this.classRankPolicy = classRankPolicy;
         this.accessControl = accessControl;
-        this.realtimePublisher = realtimePublisher;
+        this.eventPublisher = eventPublisher;
     }
 
     public AdminDashboardResponse getDashboard() {
@@ -63,9 +64,8 @@ public class AdminDashboardService {
             }
         }
 
-        AdminDashboardResponse response = buildDashboardResponse();
-        realtimePublisher.publish(response);
-        return response;
+        eventPublisher.publishEvent(new ClassRankUpdatedEvent(request.getClassIds()));
+        return buildDashboardResponse();
     }
 
     @Transactional
@@ -78,9 +78,8 @@ public class AdminDashboardService {
             classRepository.save(schoolClass);
         }
 
-        AdminDashboardResponse response = buildDashboardResponse();
-        realtimePublisher.publish(response);
-        return response;
+        eventPublisher.publishEvent(new ClassRankUpdatedEvent(List.of(classId)));
+        return buildDashboardResponse();
     }
 
     public RankDetailsResponse getRankDetails(Long classId) {
@@ -107,8 +106,11 @@ public class AdminDashboardService {
         );
     }
 
-    public void publishDashboardUpdate() {
-        realtimePublisher.publish(buildDashboardResponse());
+    /**
+     * Provides a fresh snapshot for infrastructure listeners after a transaction commits.
+     */
+    public AdminDashboardResponse getDashboardSnapshot() {
+        return buildDashboardResponse();
     }
 
     private AdminDashboardResponse buildDashboardResponse() {

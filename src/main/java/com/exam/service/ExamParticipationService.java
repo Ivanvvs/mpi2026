@@ -23,7 +23,9 @@ import com.exam.repository.ExamAttemptRepository;
 import com.exam.repository.QuestionRepository;
 import com.exam.repository.UserRepository;
 import com.exam.repository.ViolationRepository;
-import com.exam.realtime.ExamRealtimePublisher;
+import com.exam.event.ExamAnswerSavedEvent;
+import com.exam.event.ExamAttemptSubmittedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +45,7 @@ public class ExamParticipationService {
     private final ExamAttemptRepository attemptRepository;
     private final UserRepository userRepository;
     private final ViolationRepository violationRepository;
-    private final ExamRealtimePublisher realtimePublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserService currentUserService;
     private final ExamResultService examResultService;
 
@@ -54,7 +56,7 @@ public class ExamParticipationService {
             ExamAttemptRepository attemptRepository,
             UserRepository userRepository,
             ViolationRepository violationRepository,
-            ExamRealtimePublisher realtimePublisher,
+            ApplicationEventPublisher eventPublisher,
             CurrentUserService currentUserService,
             ExamResultService examResultService
     ) {
@@ -64,7 +66,7 @@ public class ExamParticipationService {
         this.attemptRepository = attemptRepository;
         this.userRepository = userRepository;
         this.violationRepository = violationRepository;
-        this.realtimePublisher = realtimePublisher;
+        this.eventPublisher = eventPublisher;
         this.currentUserService = currentUserService;
         this.examResultService = examResultService;
     }
@@ -132,7 +134,7 @@ public class ExamParticipationService {
         answer.setFinalSubmitted(finalSubmitted);
 
         Answer saved = answerRepository.save(answer);
-        realtimePublisher.publish(sessionId, studentId, "ANSWER_SAVED", "Student answer has been saved");
+        eventPublisher.publishEvent(new ExamAnswerSavedEvent(sessionId, studentId));
         return saved;
     }
 
@@ -160,7 +162,7 @@ public class ExamParticipationService {
                 answer.setFinalSubmitted(true);
                 answerRepository.save(answer);
             }
-            realtimePublisher.publish(sessionId, user.getId(), "ATTEMPT_SUBMITTED", "Student attempt has been submitted");
+            eventPublisher.publishEvent(new ExamAttemptSubmittedEvent(sessionId, user.getId()));
         }
         return attempt;
     }
