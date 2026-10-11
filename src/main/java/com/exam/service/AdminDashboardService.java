@@ -7,12 +7,15 @@ import com.exam.dto.ConfirmRankUpdatesRequest;
 import com.exam.dto.RankDetailsResponse;
 import com.exam.dto.RankDetailsStudentResponse;
 import com.exam.dto.StudentSPointHistoryResponse;
+import com.exam.dto.StudentExamResultResponse;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ClassRank;
 import com.exam.model.SchoolClass;
 import com.exam.model.User;
 import com.exam.repository.SchoolClassRepository;
 import com.exam.repository.SPointTransactionRepository;
+import com.exam.repository.ExamResultRepository;
+import com.exam.repository.QuestionRepository;
 import com.exam.repository.UserRepository;
 import com.exam.event.ClassRankUpdatedEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,7 +24,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AdminDashboardService {
@@ -29,6 +34,8 @@ public class AdminDashboardService {
     private final SchoolClassRepository classRepository;
     private final UserRepository userRepository;
     private final SPointTransactionRepository sPointTransactionRepository;
+    private final ExamResultRepository examResultRepository;
+    private final QuestionRepository questionRepository;
     private final ClassRankPolicy classRankPolicy;
     private final AccessControlService accessControl;
     private final ApplicationEventPublisher eventPublisher;
@@ -37,6 +44,8 @@ public class AdminDashboardService {
             SchoolClassRepository classRepository,
             UserRepository userRepository,
             SPointTransactionRepository sPointTransactionRepository,
+            ExamResultRepository examResultRepository,
+            QuestionRepository questionRepository,
             ClassRankPolicy classRankPolicy,
             AccessControlService accessControl,
             ApplicationEventPublisher eventPublisher
@@ -44,6 +53,8 @@ public class AdminDashboardService {
         this.classRepository = classRepository;
         this.userRepository = userRepository;
         this.sPointTransactionRepository = sPointTransactionRepository;
+        this.examResultRepository = examResultRepository;
+        this.questionRepository = questionRepository;
         this.classRankPolicy = classRankPolicy;
         this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
@@ -123,14 +134,35 @@ public class AdminDashboardService {
             throw new ResourceNotFoundException("Student does not belong to school class: " + classId);
         }
 
+        List<com.exam.model.ExamResult> examResults = examResultRepository
+                .findByStudentIdAndSessionSchoolClassId(studentId, classId);
+        Map<Long, Integer> maxScores = findMaxScores(examResults);
+        List<StudentExamResultResponse> resultResponses = examResults.stream()
+                .map(result -> StudentExamResultResponse.from(result, maxScores.getOrDefault(result.getSession().getId(), 0)))
+                .toList();
+
         return new StudentSPointHistoryResponse(
                 student.getId(),
                 student.getsPoints(),
-                sPointTransactionRepository.findByUser_IdAndSchoolClass_IdOrderByCreatedAtDescIdDesc(studentId, classId)
+                resultResponses.stream().mapToInt(StudentExamResultResponse::finalScore).sum(),
+                resultResponses,
+                sPointTransactionRepository.findHistoryByUserIdAndClassId(studentId, classId)
                         .stream()
                         .map(com.exam.dto.SPointTransactionResponse::from)
                         .toList()
         );
+    }
+
+    private Map<Long, Integer> findMaxScores(List<com.exam.model.ExamResult> examResults) {
+        if (examResults.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> sessionIds = examResults.stream().map(result -> result.getSession().getId()).toList();
+        Map<Long, Integer> maxScores = new HashMap<>();
+        for (Object[] row : questionRepository.sumMaxScoreBySessionIds(sessionIds)) {
+            maxScores.put((Long) row[0], ((Number) row[1]).intValue());
+        }
+        return maxScores;
     }
 
     /**
