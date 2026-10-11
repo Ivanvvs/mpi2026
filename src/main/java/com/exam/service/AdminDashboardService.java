@@ -14,6 +14,7 @@ import com.exam.repository.UserRepository;
 import com.exam.event.ClassRankUpdatedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -108,7 +109,10 @@ public class AdminDashboardService {
 
     /**
      * Provides a fresh snapshot for infrastructure listeners after a transaction commits.
+     * This method is invoked by a separate Spring bean, so the transactional proxy opens
+     * an independent read transaction after the originating write has committed.
      */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public AdminDashboardResponse getDashboardSnapshot() {
         return buildDashboardResponse();
     }

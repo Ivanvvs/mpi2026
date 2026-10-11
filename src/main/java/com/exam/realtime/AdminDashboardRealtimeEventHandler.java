@@ -3,6 +3,8 @@ package com.exam.realtime;
 import com.exam.event.AdminDashboardRefreshRequestedEvent;
 import com.exam.event.ClassRankUpdatedEvent;
 import com.exam.service.AdminDashboardService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -10,6 +12,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 /** Sends the dashboard only after committed data can be queried afresh. */
 @Component
 public class AdminDashboardRealtimeEventHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminDashboardRealtimeEventHandler.class);
 
     private final AdminDashboardRealtimePublisher realtimePublisher;
     private final AdminDashboardService dashboardService;
@@ -33,6 +37,10 @@ public class AdminDashboardRealtimeEventHandler {
     }
 
     private void publishCurrentDashboard() {
-        realtimePublisher.publish(dashboardService.getDashboardSnapshot());
+        try {
+            realtimePublisher.publish(dashboardService.getDashboardSnapshot());
+        } catch (RuntimeException exception) {
+            log.error("Could not publish admin dashboard realtime notification after commit", exception);
+        }
     }
 }
