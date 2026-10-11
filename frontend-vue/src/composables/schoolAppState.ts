@@ -50,7 +50,6 @@ export function createSchoolAppState() {
   const userRoleFilter = ref<Role | 'ALL'>('ALL')
   const editingUserId = ref<number | null>(null)
   const expulsionCandidate = ref<UserResponse | null>(null)
-  const rankPreviewVisible = ref(false)
 
   const registerForm = reactive({
     fullName: '',
@@ -122,7 +121,6 @@ export function createSchoolAppState() {
     userRoleFilter,
     editingUserId,
     expulsionCandidate,
-    rankPreviewVisible,
     registerForm,
     confirmPassword,
     sendCredentials,

@@ -38,7 +38,6 @@ export function useSchoolApp() {
     userRoleFilter,
     editingUserId,
     expulsionCandidate,
-    rankPreviewVisible,
     registerForm,
     confirmPassword,
     sendCredentials,
@@ -149,13 +148,15 @@ export function useSchoolApp() {
   })
 
   const {
-    pendingRankUpdates,
     selectedRankClassId,
     selectedRankClass,
     rankDetails,
-    refreshRankPreview,
+    selectedStudentHistoryId,
+    studentSPointHistory,
+    studentSPointHistoryLoading,
     selectRankUpdate,
     loadRankDetails,
+    toggleStudentSPointHistory,
     confirmRankUpdate,
     connectAdminDashboardSocket,
     disconnectAdminDashboardSocket
@@ -165,7 +166,6 @@ export function useSchoolApp() {
     currentPage,
     classes,
     stompClient,
-    rankPreviewVisible,
     setMessage
   })
 
@@ -353,7 +353,6 @@ export function useSchoolApp() {
     userRoleFilter,
     editingUserId,
     expulsionCandidate,
-    rankPreviewVisible,
     userFilters,
     registerForm,
     confirmPassword,
@@ -395,10 +394,12 @@ export function useSchoolApp() {
     curatorViolations,
     curatorPrivilegeRequests,
     examinerHomeRows,
-    pendingRankUpdates,
     selectedRankClassId,
     selectedRankClass,
     rankDetails,
+    selectedStudentHistoryId,
+    studentSPointHistory,
+    studentSPointHistoryLoading,
     examQuestionCount,
     currentQuestion,
     currentExamSubmitted,
@@ -422,9 +423,9 @@ export function useSchoolApp() {
     bootstrap,
     refreshCurrent,
     openPage,
-    refreshRankPreview,
     selectRankUpdate,
     loadRankDetails,
+    toggleStudentSPointHistory,
     confirmRankUpdate,
     resetRegisterForm,
     registerUser,

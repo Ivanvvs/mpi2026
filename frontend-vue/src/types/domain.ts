@@ -166,6 +166,19 @@ export interface RankDetails {
   students: RankDetailsStudent[]
 }
 
+export interface SPointTransaction {
+  source: string
+  pointsDelta: number
+  resultingBalance: number
+  operationAt: string
+}
+
+export interface StudentSPointHistory {
+  studentId: number
+  totalSPoints: number
+  transactions: SPointTransaction[]
+}
+
 export interface RankedClass {
   id: number
   name: string

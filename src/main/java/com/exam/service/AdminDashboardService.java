@@ -6,10 +6,13 @@ import com.exam.dto.AdminDashboardResponse;
 import com.exam.dto.ConfirmRankUpdatesRequest;
 import com.exam.dto.RankDetailsResponse;
 import com.exam.dto.RankDetailsStudentResponse;
+import com.exam.dto.StudentSPointHistoryResponse;
 import com.exam.exception.ResourceNotFoundException;
 import com.exam.model.ClassRank;
 import com.exam.model.SchoolClass;
+import com.exam.model.User;
 import com.exam.repository.SchoolClassRepository;
+import com.exam.repository.SPointTransactionRepository;
 import com.exam.repository.UserRepository;
 import com.exam.event.ClassRankUpdatedEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,6 +28,7 @@ public class AdminDashboardService {
 
     private final SchoolClassRepository classRepository;
     private final UserRepository userRepository;
+    private final SPointTransactionRepository sPointTransactionRepository;
     private final ClassRankPolicy classRankPolicy;
     private final AccessControlService accessControl;
     private final ApplicationEventPublisher eventPublisher;
@@ -32,12 +36,14 @@ public class AdminDashboardService {
     public AdminDashboardService(
             SchoolClassRepository classRepository,
             UserRepository userRepository,
+            SPointTransactionRepository sPointTransactionRepository,
             ClassRankPolicy classRankPolicy,
             AccessControlService accessControl,
             ApplicationEventPublisher eventPublisher
     ) {
         this.classRepository = classRepository;
         this.userRepository = userRepository;
+        this.sPointTransactionRepository = sPointTransactionRepository;
         this.classRankPolicy = classRankPolicy;
         this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
@@ -104,6 +110,26 @@ public class AdminDashboardService {
                 schoolClass.getsPoints(), proposedRank != schoolClass.getRank(),
                 classRankPolicy.minimumPointsFor(proposedRank), nextHigherRank, pointsToNextHigherRank,
                 calculatedStudentsSPoints, students
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public StudentSPointHistoryResponse getStudentSPointHistory(Long classId, Long studentId) {
+        assertAdmin();
+        findClass(classId);
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found: " + studentId));
+        if (student.getSchoolClass() == null || !classId.equals(student.getSchoolClass().getId())) {
+            throw new ResourceNotFoundException("Student does not belong to school class: " + classId);
+        }
+
+        return new StudentSPointHistoryResponse(
+                student.getId(),
+                student.getsPoints(),
+                sPointTransactionRepository.findByUser_IdAndSchoolClass_IdOrderByCreatedAtDescIdDesc(studentId, classId)
+                        .stream()
+                        .map(com.exam.dto.SPointTransactionResponse::from)
+                        .toList()
         );
     }
 

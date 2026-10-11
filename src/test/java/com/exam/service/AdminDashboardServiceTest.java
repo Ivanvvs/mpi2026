@@ -5,9 +5,11 @@ import com.exam.exception.ResourceNotFoundException;
 import com.exam.event.ClassRankUpdatedEvent;
 import com.exam.model.ClassRank;
 import com.exam.model.SchoolClass;
+import com.exam.model.SPointTransaction;
 import com.exam.model.User;
 import com.exam.realtime.AdminDashboardRealtimePublisher;
 import com.exam.repository.SchoolClassRepository;
+import com.exam.repository.SPointTransactionRepository;
 import com.exam.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +44,8 @@ class AdminDashboardServiceTest {
     private SchoolClassRepository classRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private SPointTransactionRepository sPointTransactionRepository;
     @Autowired
     private ClassRankPolicy classRankPolicy;
     @Autowired
@@ -163,6 +167,31 @@ class AdminDashboardServiceTest {
     }
 
     @Test
+    void adminCanReadStudentSPointHistoryFromStoredTransactions() {
+        SchoolClass schoolClass = classRepository.findByName("10A").orElseThrow();
+        User student = userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId()).getFirst();
+        SPointTransaction transaction = new SPointTransaction();
+        transaction.setUser(student);
+        transaction.setSchoolClass(schoolClass);
+        transaction.setReason("EXAM_RESULT");
+        transaction.setPointsDelta(-2);
+        transaction.setResultingBalance(student.getsPoints() - 2);
+        sPointTransactionRepository.save(transaction);
+        authenticateAs("admin");
+
+        var history = dashboardService.getStudentSPointHistory(schoolClass.getId(), student.getId());
+
+        assertThat(history.studentId()).isEqualTo(student.getId());
+        assertThat(history.totalSPoints()).isEqualTo(student.getsPoints());
+        assertThat(history.transactions()).anySatisfy(item -> {
+            assertThat(item.source()).isEqualTo("EXAM_RESULT");
+            assertThat(item.pointsDelta()).isEqualTo(-2);
+            assertThat(item.resultingBalance()).isEqualTo(student.getsPoints() - 2);
+            assertThat(item.operationAt()).isNotNull();
+        });
+    }
+
+    @Test
     void nonAdminCannotConfirmOrReadRankDetails() {
         SchoolClass schoolClass = classRepository.findByName("10A").orElseThrow();
         authenticateAs("student");
@@ -170,6 +199,9 @@ class AdminDashboardServiceTest {
         assertThatThrownBy(() -> dashboardService.confirmRankUpdate(schoolClass.getId()))
                 .isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> dashboardService.getRankDetails(schoolClass.getId()))
+                .isInstanceOf(ForbiddenException.class);
+        User student = userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId()).getFirst();
+        assertThatThrownBy(() -> dashboardService.getStudentSPointHistory(schoolClass.getId(), student.getId()))
                 .isInstanceOf(ForbiddenException.class);
     }
 
