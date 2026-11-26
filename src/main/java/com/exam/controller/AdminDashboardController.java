@@ -3,6 +3,7 @@ package com.exam.controller;
 import com.exam.dto.AdminDashboardResponse;
 import com.exam.dto.ConfirmRankUpdatesRequest;
 import com.exam.dto.RankDetailsResponse;
+import com.exam.dto.StudentSPointHistoryResponse;
 import com.exam.service.AdminDashboardService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +41,14 @@ public class AdminDashboardController {
     @GetMapping("/classes/{classId}/rank-details")
     public RankDetailsResponse getRankDetails(@PathVariable Long classId) {
         return adminDashboardService.getRankDetails(classId);
+    }
+
+    @GetMapping("/classes/{classId}/students/{studentId}/s-point-history")
+    public StudentSPointHistoryResponse getStudentSPointHistory(
+            @PathVariable Long classId,
+            @PathVariable Long studentId
+    ) {
+        return adminDashboardService.getStudentSPointHistory(classId, studentId);
     }
 
     @PostMapping("/classes/{classId}/rank/confirm")

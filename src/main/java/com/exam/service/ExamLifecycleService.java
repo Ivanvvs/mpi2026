@@ -14,7 +14,9 @@ import com.exam.model.User;
 import com.exam.repository.ExamSessionRepository;
 import com.exam.repository.QuestionRepository;
 import com.exam.repository.SchoolClassRepository;
-import com.exam.realtime.ExamRealtimePublisher;
+import com.exam.event.ExamFinishedEvent;
+import com.exam.event.ExamStartedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +34,7 @@ public class ExamLifecycleService {
     private final ExamSessionRepository sessionRepository;
     private final SchoolClassRepository classRepository;
     private final QuestionRepository questionRepository;
-    private final ExamRealtimePublisher realtimePublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserService currentUserService;
     private final AccessControlService accessControl;
 
@@ -40,14 +42,14 @@ public class ExamLifecycleService {
             ExamSessionRepository sessionRepository,
             SchoolClassRepository classRepository,
             QuestionRepository questionRepository,
-            ExamRealtimePublisher realtimePublisher,
+            ApplicationEventPublisher eventPublisher,
             CurrentUserService currentUserService,
             AccessControlService accessControl
     ) {
         this.sessionRepository = sessionRepository;
         this.classRepository = classRepository;
         this.questionRepository = questionRepository;
-        this.realtimePublisher = realtimePublisher;
+        this.eventPublisher = eventPublisher;
         this.currentUserService = currentUserService;
         this.accessControl = accessControl;
     }
@@ -108,7 +110,7 @@ public class ExamLifecycleService {
         assertCanManageExam(session);
         session.setStartTime(nowUtc());
         ExamSession saved = sessionRepository.save(session);
-        realtimePublisher.publish(id, "EXAM_STARTED", "Exam has been started");
+        eventPublisher.publishEvent(new ExamStartedEvent(id));
         return saved;
     }
 
@@ -124,10 +126,11 @@ public class ExamLifecycleService {
         assertCanManageExam(session);
         session.setEndTime(nowUtc());
         ExamSession saved = sessionRepository.save(session);
-        realtimePublisher.publish(id, "EXAM_FINISHED", "Exam has been finished");
+        eventPublisher.publishEvent(new ExamFinishedEvent(id, "Exam has been finished"));
         return saved;
     }
 
+    @Transactional
     public ExamSession getSession(Long id) {
         Optional<ExamSession> optionalSession = sessionRepository.findById(id);
         if (!optionalSession.isPresent()) {
@@ -138,6 +141,7 @@ public class ExamLifecycleService {
         return finishIfExpired(session);
     }
 
+    @Transactional
     public List<ExamSession> getExams() {
         List<ExamSession> sessions = sessionRepository.findAll();
         List<ExamSession> result = new ArrayList<>();
@@ -147,6 +151,7 @@ public class ExamLifecycleService {
         return result;
     }
 
+    @Transactional
     public List<ExamSession> getExamsForCurrentUser() {
         User user = accessControl.currentProfile();
         Role role = accessControl.currentRole();
@@ -172,6 +177,7 @@ public class ExamLifecycleService {
         return result;
     }
 
+    @Transactional
     public List<ExamSession> getExamsForClass(Long classId) {
         List<ExamSession> sessions = sessionRepository.findBySchoolClassId(classId);
         List<ExamSession> result = new ArrayList<>();
@@ -207,7 +213,7 @@ public class ExamLifecycleService {
         session.setStatus(ExamStatus.FINISHED);
         session.setEndTime(endsAt);
         ExamSession saved = sessionRepository.save(session);
-        realtimePublisher.publish(session.getId(), "EXAM_FINISHED", "Exam has been finished by time limit");
+        eventPublisher.publishEvent(new ExamFinishedEvent(session.getId(), "Exam has been finished by time limit"));
         return saved;
     }
 

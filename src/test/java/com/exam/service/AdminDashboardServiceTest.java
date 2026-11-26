@@ -2,11 +2,20 @@ package com.exam.service;
 
 import com.exam.exception.ForbiddenException;
 import com.exam.exception.ResourceNotFoundException;
+import com.exam.event.ClassRankUpdatedEvent;
 import com.exam.model.ClassRank;
+import com.exam.model.ExamResult;
+import com.exam.model.ExamSession;
+import com.exam.model.ExamStatus;
+import com.exam.model.Question;
 import com.exam.model.SchoolClass;
 import com.exam.model.User;
 import com.exam.realtime.AdminDashboardRealtimePublisher;
 import com.exam.repository.SchoolClassRepository;
+import com.exam.repository.ExamResultRepository;
+import com.exam.repository.ExamSessionRepository;
+import com.exam.repository.QuestionRepository;
+import com.exam.repository.SPointTransactionRepository;
 import com.exam.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +26,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,13 +51,24 @@ class AdminDashboardServiceTest {
     @Autowired
     private UserRepository userRepository;
     @Autowired
+    private ExamSessionRepository sessionRepository;
+    @Autowired
+    private QuestionRepository questionRepository;
+    @Autowired
+    private ExamResultRepository examResultRepository;
+    @Autowired
+    private SPointService sPointService;
+    @Autowired
     private ClassRankPolicy classRankPolicy;
     @Autowired
     private TrackingAdminDashboardRealtimePublisher realtimePublisher;
+    @Autowired
+    private ClassRankEventTracker classRankEventTracker;
 
     @BeforeEach
     void resetPublisher() {
         realtimePublisher.reset();
+        classRankEventTracker.reset();
     }
 
     @AfterEach
@@ -84,7 +105,8 @@ class AdminDashboardServiceTest {
 
         assertThat(selected.getRank()).isEqualTo(ClassRank.A);
         assertThat(untouched.getRank()).isEqualTo(ClassRank.D);
-        assertThat(realtimePublisher.publishCount()).isEqualTo(1);
+        assertThat(classRankEventTracker.eventCount()).isEqualTo(1);
+        assertThat(realtimePublisher.publishCount()).isZero();
     }
 
     @Test
@@ -157,6 +179,54 @@ class AdminDashboardServiceTest {
     }
 
     @Test
+    void adminCanReadExamResultsAndPositiveAndNegativeSPointHistory() {
+        SchoolClass schoolClass = classRepository.findByName("10A").orElseThrow();
+        User student = userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId()).getFirst();
+        int initialBalance = student.getsPoints();
+        ExamSession session = new ExamSession();
+        session.setTitle("Алгебра");
+        session.setSubject("Математика");
+        session.setSchoolClass(schoolClass);
+        session.setStatus(ExamStatus.FINISHED);
+        session = sessionRepository.save(session);
+        Question question = new Question();
+        question.setSession(session);
+        question.setText("Решите уравнение");
+        question.setMaxScore(10);
+        questionRepository.save(question);
+        ExamResult result = new ExamResult();
+        result.setSession(session);
+        result.setStudent(student);
+        result.setRawScore(9);
+        result.setFinalScore(7);
+        result.setAwardedSPoints(7);
+        result.setAwardedSPoints(0);
+        result = examResultRepository.save(result);
+        sPointService.applyExamResults(session, List.of(result));
+        result.setFinalScore(5);
+        sPointService.applyExamResults(session, List.of(result));
+        authenticateAs("admin");
+
+        var history = dashboardService.getStudentSPointHistory(schoolClass.getId(), student.getId());
+
+        assertThat(history.studentId()).isEqualTo(student.getId());
+        assertThat(history.totalSPoints()).isEqualTo(initialBalance + 5);
+        assertThat(history.examResultsTotal()).isEqualTo(5);
+        assertThat(history.examResults()).singleElement().satisfies(item -> {
+            assertThat(item.examTitle()).isEqualTo("Алгебра");
+            assertThat(item.subject()).isEqualTo("Математика");
+            assertThat(item.finalScore()).isEqualTo(5);
+            assertThat(item.maxScore()).isEqualTo(10);
+        });
+        assertThat(history.transactions()).extracting("pointsDelta").containsExactly(-2, 7);
+        assertThat(history.transactions()).anySatisfy(item -> {
+            assertThat(item.description()).isEqualTo("Начисление по результату экзамена");
+            assertThat(item.examTitle()).isEqualTo("Алгебра");
+            assertThat(item.operationAt()).isNotNull();
+        });
+    }
+
+    @Test
     void nonAdminCannotConfirmOrReadRankDetails() {
         SchoolClass schoolClass = classRepository.findByName("10A").orElseThrow();
         authenticateAs("student");
@@ -164,6 +234,9 @@ class AdminDashboardServiceTest {
         assertThatThrownBy(() -> dashboardService.confirmRankUpdate(schoolClass.getId()))
                 .isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> dashboardService.getRankDetails(schoolClass.getId()))
+                .isInstanceOf(ForbiddenException.class);
+        User student = userRepository.findBySchoolClassIdAndActiveTrue(schoolClass.getId()).getFirst();
+        assertThatThrownBy(() -> dashboardService.getStudentSPointHistory(schoolClass.getId(), student.getId()))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -179,6 +252,11 @@ class AdminDashboardServiceTest {
         @Primary
         TrackingAdminDashboardRealtimePublisher trackingRealtimePublisher(SimpMessagingTemplate messagingTemplate) {
             return new TrackingAdminDashboardRealtimePublisher(messagingTemplate);
+        }
+
+        @Bean
+        ClassRankEventTracker classRankEventTracker() {
+            return new ClassRankEventTracker();
         }
     }
 
@@ -200,6 +278,23 @@ class AdminDashboardServiceTest {
 
         int publishCount() {
             return publishCount;
+        }
+    }
+
+    static class ClassRankEventTracker {
+        private int eventCount;
+
+        @EventListener
+        void onClassRankUpdated(ClassRankUpdatedEvent event) {
+            eventCount++;
+        }
+
+        void reset() {
+            eventCount = 0;
+        }
+
+        int eventCount() {
+            return eventCount;
         }
     }
 }

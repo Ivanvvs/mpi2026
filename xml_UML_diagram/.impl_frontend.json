@@ -1,0 +1,1663 @@
+[
+  {
+    "file": "frontend-vue/src/services/examApi.ts",
+    "name": "examApi",
+    "kind": "module",
+    "fields": [],
+    "ops": [
+      {
+        "name": "loadExamDetails",
+        "visibility": "public",
+        "type": "Promise<ExamDetails>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\n  return api<ExamDetails>(`/exam/session/${examId}/details`)\n}"
+      },
+      {
+        "name": "startExam",
+        "visibility": "public",
+        "type": "Promise<ExamSession>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\n  return api<ExamSession>(`/exam/session/start/${examId}`, { method: 'POST' })\n}"
+      },
+      {
+        "name": "finishExam",
+        "visibility": "public",
+        "type": "Promise<ExamSession>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\n  return api<ExamSession>(`/exam/session/end/${examId}`, { method: 'POST' })\n}"
+      },
+      {
+        "name": "saveAnswer",
+        "visibility": "public",
+        "type": "Promise<Answer>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "questionId",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "text",
+            "type": "string",
+            "optional": false
+          }
+        ],
+        "body": "{\n  return api<Answer>(`/exam/session/${examId}/answers/me`, {\n    method: 'POST',\n    body: JSON.stringify({ questionId, text, finalSubmitted: false })\n  })\n}"
+      },
+      {
+        "name": "submitAttempt",
+        "visibility": "public",
+        "type": "Promise<unknown>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\n  return api(`/exam/session/${examId}/attempt/me/submit`, { method: 'POST' })\n}"
+      },
+      {
+        "name": "saveGrades",
+        "visibility": "public",
+        "type": "Promise<unknown>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "scores",
+            "type": "Array<{ studentId: number; rawScore: number }>",
+            "optional": false
+          }
+        ],
+        "body": "{\n  return api(`/exam/session/${examId}/grades`, {\n    method: 'POST',\n    body: JSON.stringify({ scores })\n  })\n}"
+      }
+    ]
+  },
+  {
+    "file": "frontend-vue/src/services/violationApi.ts",
+    "name": "violationApi",
+    "kind": "module",
+    "fields": [],
+    "ops": [
+      {
+        "name": "reportViolation",
+        "visibility": "public",
+        "type": "Promise<unknown>",
+        "params": [
+          {
+            "name": "api",
+            "type": "ApiClient",
+            "optional": false
+          },
+          {
+            "name": "violation",
+            "type": "ViolationRequest",
+            "optional": false
+          },
+          {
+            "name": "forCurrentUser",
+            "type": "boolean",
+            "optional": false,
+            "initial": "false"
+          }
+        ],
+        "body": "{\n  return api(forCurrentUser ? '/violations/report/me' : '/violations/report', {\n    method: 'POST',\n    body: JSON.stringify(violation)\n  })\n}"
+      }
+    ]
+  },
+  {
+    "file": "frontend-vue/src/services/violationApi.ts",
+    "name": "ViolationRequest",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "sessionId",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "userId",
+        "type": "number",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "type",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "pointsPenalty",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/services/examRealtime.ts",
+    "name": "examRealtime",
+    "kind": "module",
+    "fields": [],
+    "ops": [
+      {
+        "name": "connectExamRealtime",
+        "visibility": "public",
+        "type": "Client",
+        "params": [
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "handlers",
+            "type": "ExamRealtimeHandlers",
+            "optional": false
+          }
+        ],
+        "body": "{\n  const client = new Client({\n    webSocketFactory: () => new SockJS(WS_URL),\n    reconnectDelay: 3000,\n    onConnect: () => {\n      handlers.onConnected()\n      client.subscribe(`/topic/exams/${examId}`, (frame) => {\n        const payload = JSON.parse(frame.body) as Partial<ExamRealtimeMessage>\n        void handlers.onMessage({\n          type: payload.type || '',\n          userId: typeof payload.userId === 'number' ? payload.userId : null\n        })\n      })\n    },\n    onWebSocketError: handlers.onError\n  })\n  client.activate()\n  return client\n}"
+      },
+      {
+        "name": "disconnectExamRealtime",
+        "visibility": "public",
+        "type": "void",
+        "params": [
+          {
+            "name": "client",
+            "type": "DeactivatableClient | null",
+            "optional": false
+          }
+        ],
+        "body": "{\n  client?.deactivate()\n}"
+      }
+    ]
+  },
+  {
+    "file": "frontend-vue/src/services/examRealtime.ts",
+    "name": "ExamRealtimeMessage",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "type",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "userId",
+        "type": "number | null",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/services/examRealtime.ts",
+    "name": "DeactivatableClient",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "deactivate",
+        "type": "() => void | Promise<void>",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/services/examRealtime.ts",
+    "name": "ExamRealtimeHandlers",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "onConnected",
+        "type": "() => void",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "onMessage",
+        "type": "(message: ExamRealtimeMessage) => void | Promise<void>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "onError",
+        "type": "() => void",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/services/api.ts",
+    "name": "api",
+    "kind": "module",
+    "fields": [
+      {
+        "name": "API_URL",
+        "type": "\"http://localhost:8081\"",
+        "visibility": "public",
+        "initial": "'http://localhost:8081'"
+      },
+      {
+        "name": "WS_URL",
+        "type": "\"http://localhost:8081/ws\"",
+        "visibility": "public",
+        "initial": "`${API_URL}/ws`"
+      }
+    ],
+    "ops": [
+      {
+        "name": "createApiClient",
+        "visibility": "public",
+        "type": "ApiClient",
+        "params": [
+          {
+            "name": "session",
+            "type": "SessionWithToken",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n  return async function api<T>(path: string, options: RequestInit = {}): Promise<T> {\r\n    const response = await fetch(`${API_URL}${path}`, {\r\n      ...options,\r\n      headers: {\r\n        'Content-Type': 'application/json',\r\n        Authorization: `Bearer ${session.token}`,\r\n        ...(options.headers || {})\r\n      }\r\n    })\r\n    const text = await response.text()\r\n    const data = text ? JSON.parse(text) : null\r\n    if (!response.ok) {\r\n      throw new Error(data?.message || data?.error || `HTTP ${response.status}`)\r\n    }\r\n    return data as T\r\n  }\r\n}"
+      }
+    ]
+  },
+  {
+    "file": "frontend-vue/src/services/api.ts",
+    "name": "ApiClient",
+    "kind": "type",
+    "fields": [],
+    "ops": [],
+    "definition": "<T>(path: string, options?: RequestInit) => Promise<T>"
+  },
+  {
+    "file": "frontend-vue/src/services/api.ts",
+    "name": "SessionWithToken",
+    "kind": "type",
+    "fields": [],
+    "ops": [],
+    "definition": "{ token: string }"
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "Role",
+    "kind": "type",
+    "fields": [],
+    "ops": [],
+    "definition": "'STUDENT' | 'CURATOR' | 'EXAMINER' | 'ADMIN'"
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "ExamStatus",
+    "kind": "type",
+    "fields": [],
+    "ops": [],
+    "definition": "'PREPARED' | 'ACTIVE' | 'FINISHED'"
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "SchoolClass",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "rank",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "proposedRank",
+        "type": "string",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "sPoints",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "studentCount",
+        "type": "number",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "rankChangeRequired",
+        "type": "boolean",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "UserResponse",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "accountId",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "fullName",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "username",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "email",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "role",
+        "type": "Role",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "classId",
+        "type": "number | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "className",
+        "type": "string",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "passportData",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "entranceExamScore",
+        "type": "number | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "contactInfo",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "birthDate",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "sPoints",
+        "type": "number",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "active",
+        "type": "boolean",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "createdAt",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "ExamSession",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "subject",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "status",
+        "type": "ExamStatus",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "schoolClass",
+        "type": "SchoolClass",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "totalQuestions",
+        "type": "number",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "durationMinutes",
+        "type": "number",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "scheduledStartTime",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "startTime",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "endTime",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "Question",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "orderIndex",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "correctAnswer",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "maxScore",
+        "type": "number | null",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "Answer",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "questionId",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "userId",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "finalSubmitted",
+        "type": "boolean",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "ExamAttempt",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "started",
+        "type": "boolean",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "submitted",
+        "type": "boolean",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "startedAt",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "submittedAt",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "ExamStudentAttempt",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "studentId",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "started",
+        "type": "boolean",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "submitted",
+        "type": "boolean",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "startedAt",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "submittedAt",
+        "type": "string | null",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "ExamResult",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "session",
+        "type": "ExamSession",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "student",
+        "type": "UserResponse",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "finalScore",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "rankPlace",
+        "type": "number",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "ExamDetails",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "exam",
+        "type": "ExamSession",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "questions",
+        "type": "Question[]",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "answers",
+        "type": "Answer[]",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "results",
+        "type": "ExamResult[]",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "violations",
+        "type": "unknown[]",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "attempt",
+        "type": "ExamAttempt",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "attempts",
+        "type": "ExamStudentAttempt[]",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/types/domain.ts",
+    "name": "RealtimeEvent",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "type",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "time",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "userId",
+        "type": "number | null",
+        "optional": true,
+        "visibility": "public"
+      },
+      {
+        "name": "userName",
+        "type": "string",
+        "optional": true,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "useExamManagement",
+    "kind": "composable",
+    "fields": [
+      {
+        "name": "api",
+        "type": "ApiClient",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "session",
+        "type": "SessionState",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "exams",
+        "type": "RefLike<ExamSession[]>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "users",
+        "type": "RefLike<UserResponse[]>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "selectedExam",
+        "type": "RefLike<ExamDetails | null>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "realtimeEvents",
+        "type": "RefLike<Array<{ id: string; type: string; time: string; userId?: number | null; userName?: string }>>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "stompClient",
+        "type": "RefLike<DeactivatableClient | null>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "currentQuestionIndex",
+        "type": "RefLike<number>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "selectedMonitorStudentId",
+        "type": "RefLike<number | null>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "examStatusFilter",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "examForm",
+        "type": "ExamFormState",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "examQuestionsText",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "examQuestionFileName",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "examFileInputKey",
+        "type": "RefLike<number>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "examCreateSuccess",
+        "type": "RefLike<boolean>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "answerSaveSuccess",
+        "type": "RefLike<boolean>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "answerDrafts",
+        "type": "Record<number, string>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "gradeForm",
+        "type": "Record<number, number>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "violationForm",
+        "type": "ViolationFormState",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "now",
+        "type": "RefLike<number>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "loadClasses",
+        "type": "() => Promise<void>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "loadExams",
+        "type": "() => Promise<void>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "currentPage",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "setMessage",
+        "type": "(text: string, kind?: MessageKind) => void",
+        "optional": false,
+        "visibility": "private"
+      },
+      {
+        "name": "reportedClientViolations",
+        "type": "Set<string>",
+        "visibility": "private"
+      },
+      {
+        "name": "visibleExams",
+        "type": "ComputedRef<ExamSession[]>",
+        "visibility": "public"
+      },
+      {
+        "name": "classStudentsForSelectedExam",
+        "type": "ComputedRef<UserResponse[]>",
+        "visibility": "public"
+      },
+      {
+        "name": "examQuestionCount",
+        "type": "ComputedRef<number>",
+        "visibility": "public"
+      },
+      {
+        "name": "currentQuestion",
+        "type": "ComputedRef<Question | null>",
+        "visibility": "public"
+      },
+      {
+        "name": "currentExamSubmitted",
+        "type": "ComputedRef<boolean>",
+        "visibility": "public"
+      },
+      {
+        "name": "selectedMonitorStudent",
+        "type": "ComputedRef<UserResponse | null>",
+        "visibility": "public"
+      },
+      {
+        "name": "selectedMonitorAnswers",
+        "type": "ComputedRef<{ question: Question; answer: Answer | undefined; score: number; }[]>",
+        "visibility": "public"
+      },
+      {
+        "name": "finalScoreRows",
+        "type": "ComputedRef<{ student: UserResponse; result: ExamResult | undefined; draftScore: number; }[]>",
+        "visibility": "public"
+      }
+    ],
+    "ops": [
+      {
+        "name": "getStudentAttempt",
+        "visibility": "private",
+        "type": "ExamStudentAttempt | null",
+        "params": [
+          {
+            "name": "studentId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    return selectedExam.value?.attempts?.find((attempt) => attempt.studentId === studentId) || null\r\n  }"
+      },
+      {
+        "name": "answerCountForStudent",
+        "visibility": "public",
+        "type": "number",
+        "params": [
+          {
+            "name": "studentId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    return selectedExam.value?.answers.filter((answer) => answer.userId === studentId && answer.text?.trim()).length || 0\r\n  }"
+      },
+      {
+        "name": "examStudentStatus",
+        "visibility": "public",
+        "type": "\"Не подключен\" | \"Завершил экзамен\" | \"Подключен\"",
+        "params": [
+          {
+            "name": "studentId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    const attempt = getStudentAttempt(studentId)\r\n    if (!attempt?.started) return 'Не подключен'\r\n    if (attempt.submitted) return 'Завершил экзамен'\r\n    return 'Подключен'\r\n  }"
+      },
+      {
+        "name": "scoreAnswer",
+        "visibility": "private",
+        "type": "number",
+        "params": [
+          {
+            "name": "correctAnswer",
+            "type": "string | null",
+            "optional": true
+          },
+          {
+            "name": "answerText",
+            "type": "string | null",
+            "optional": true
+          },
+          {
+            "name": "maxScore",
+            "type": "number | null",
+            "optional": true
+          }
+        ],
+        "body": "{\r\n    if (!correctAnswer || !answerText) return 0\r\n    return normalizeAnswer(answerText) === normalizeAnswer(correctAnswer) ? Number(maxScore || 1) : 0\r\n  }"
+      },
+      {
+        "name": "normalizeAnswer",
+        "visibility": "private",
+        "type": "string",
+        "params": [
+          {
+            "name": "value",
+            "type": "string",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    return value.trim().replace(/\\s+/g, ' ').toLowerCase()\r\n  }"
+      },
+      {
+        "name": "examElapsedLabel",
+        "visibility": "public",
+        "type": "string",
+        "params": [
+          {
+            "name": "exam",
+            "type": "ExamSession",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    const startedAt = exam.startTime || exam.scheduledStartTime\r\n    if (!startedAt) return '-'\r\n    return parseServerDateTime(startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })\r\n  }"
+      },
+      {
+        "name": "examRemainingLabel",
+        "visibility": "public",
+        "type": "string",
+        "params": [
+          {
+            "name": "exam",
+            "type": "ExamSession",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    if (!exam.durationMinutes) return '—'\r\n    const sourceStartTime = exam.scheduledStartTime || exam.startTime\r\n    const startTime = sourceStartTime ? parseServerDateTime(sourceStartTime).getTime() : Date.now()\r\n    const endTime = startTime + exam.durationMinutes * 60000\r\n    const remainingMs = endTime - now.value\r\n    if (remainingMs <= 0) return '00:00'\r\n    const minutes = Math.floor(remainingMs / 60000)\r\n    const seconds = Math.floor((remainingMs % 60000) / 1000)\r\n    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`\r\n  }"
+      },
+      {
+        "name": "examEndLabel",
+        "visibility": "public",
+        "type": "string",
+        "params": [
+          {
+            "name": "exam",
+            "type": "ExamSession",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    if (exam.endTime) {\r\n      return parseServerDateTime(exam.endTime).toLocaleString('ru-RU', {\r\n        day: '2-digit',\r\n        month: '2-digit',\r\n        hour: '2-digit',\r\n        minute: '2-digit'\r\n      })\r\n    }\r\n\r\n    const sourceStartTime = exam.scheduledStartTime || exam.startTime\r\n    if (!sourceStartTime || !exam.durationMinutes) return '-'\r\n\r\n    const endTime = new Date(parseServerDateTime(sourceStartTime).getTime() + exam.durationMinutes * 60000)\r\n    return endTime.toLocaleString('ru-RU', {\r\n      day: '2-digit',\r\n      month: '2-digit',\r\n      hour: '2-digit',\r\n      minute: '2-digit'\r\n    })\r\n  }"
+      },
+      {
+        "name": "loadExamDetails",
+        "visibility": "private",
+        "type": "Promise<void>",
+        "params": [
+          {
+            "name": "id",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "preserveQuestionIndex",
+            "type": "boolean",
+            "optional": false,
+            "initial": "false"
+          },
+          {
+            "name": "reconnectSocket",
+            "type": "boolean",
+            "optional": false,
+            "initial": "false"
+          }
+        ],
+        "body": "{\r\n    const previousIndex = currentQuestionIndex.value\r\n    const previousMonitorStudentId = selectedMonitorStudentId.value\r\n    selectedExam.value = await loadExamDetailsRequest(api, id)\r\n    localStorage.setItem('school-selected-exam-id', String(id))\r\n    currentQuestionIndex.value = preserveQuestionIndex\r\n      ? Math.min(previousIndex, Math.max(selectedExam.value.questions.length - 1, 0))\r\n      : 0\r\n    selectedMonitorStudentId.value = preserveQuestionIndex ? previousMonitorStudentId : null\r\n    selectedExam.value.questions.forEach((question) => {\r\n      const existing = selectedExam.value?.answers.find((answer) => answer.questionId === question.id && answer.userId === session.userId)\r\n      answerDrafts[question.id] = existing?.text || answerDrafts[question.id] || ''\r\n    })\r\n    classStudentsForSelectedExam.value.forEach((student) => {\r\n      gradeForm[student.id] = gradeForm[student.id] || 0\r\n    })\r\n    if (reconnectSocket && session.role === 'EXAMINER') connectExamSocket(id)\r\n    if (session.role === 'STUDENT' && selectedExam.value.exam.status === 'ACTIVE' && !currentExamSubmitted.value) {\r\n      requestExamFullscreen()\r\n    }\r\n  }"
+      },
+      {
+        "name": "openExam",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [
+          {
+            "name": "id",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "preserveQuestionIndex",
+            "type": "boolean",
+            "optional": false,
+            "initial": "false"
+          }
+        ],
+        "body": "{\r\n    await loadExamDetails(id, preserveQuestionIndex, true)\r\n  }"
+      },
+      {
+        "name": "startExam",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [
+          {
+            "name": "id",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    await startExamRequest(api, id)\r\n    await loadExams()\r\n    await openExam(id)\r\n    setMessage('Экзамен запущен', 'success')\r\n  }"
+      },
+      {
+        "name": "finishExam",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [
+          {
+            "name": "id",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    await finishExamRequest(api, id)\r\n    await loadExams()\r\n    await openExam(id)\r\n    setMessage('Экзамен завершен', 'success')\r\n  }"
+      },
+      {
+        "name": "submitAllAnswers",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [],
+        "body": "{\r\n    if (!selectedExam.value || !session.userId || currentExamSubmitted.value) return\r\n    const examId = selectedExam.value.exam.id\r\n    for (const question of selectedExam.value.questions) {\r\n      const text = answerDrafts[question.id]?.trim()\r\n      if (!text) continue\r\n      await saveAnswerRequest(api, examId, question.id, text)\r\n    }\r\n    await submitAttempt(api, examId)\r\n    await loadExams()\r\n    selectedExam.value = null\r\n    currentPage.value = 'exams'\r\n    localStorage.setItem('school-current-page', 'exams')\r\n    localStorage.removeItem('school-selected-exam-id')\r\n    localStorage.removeItem('school-current-question-index')\r\n    setMessage('Экзамен завершен', 'success')\r\n  }"
+      },
+      {
+        "name": "saveCurrentAnswer",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [],
+        "body": "{\r\n    answerSaveSuccess.value = false\r\n    if (!selectedExam.value || !currentQuestion.value || !session.userId || currentExamSubmitted.value) return\r\n\r\n    const text = answerDrafts[currentQuestion.value.id]?.trim()\r\n    if (!text) {\r\n      setMessage('Введите ответ перед сохранением', 'error')\r\n      return\r\n    }\r\n\r\n    await saveAnswer(currentQuestion.value.id, text)\r\n    await loadExamDetails(selectedExam.value.exam.id, true)\r\n    answerSaveSuccess.value = true\r\n    window.setTimeout(() => {\r\n      answerSaveSuccess.value = false\r\n    }, 2000)\r\n    setMessage('Ответ сохранен', 'success')\r\n  }"
+      },
+      {
+        "name": "saveAnswer",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [
+          {
+            "name": "questionId",
+            "type": "number",
+            "optional": false
+          },
+          {
+            "name": "text",
+            "type": "string",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    if (!selectedExam.value) return\r\n\r\n    await saveAnswerRequest(api, selectedExam.value.exam.id, questionId, text)\r\n  }"
+      },
+      {
+        "name": "autosaveCurrentAnswer",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [],
+        "body": "{\r\n    if (session.role !== 'STUDENT' || !selectedExam.value || selectedExam.value.exam.status !== 'ACTIVE' || currentExamSubmitted.value || !currentQuestion.value) {\r\n      return\r\n    }\r\n\r\n    const text = answerDrafts[currentQuestion.value.id]?.trim()\r\n    if (!text) return\r\n\r\n    try {\r\n      await saveAnswer(currentQuestion.value.id, text)\r\n    } catch {\r\n      // Manual save shows user-facing errors; background autosave stays quiet.\r\n    }\r\n  }"
+      },
+      {
+        "name": "nextQuestion",
+        "visibility": "public",
+        "type": "void",
+        "params": [],
+        "body": "{\r\n    if (!selectedExam.value?.questions.length) return\r\n    currentQuestionIndex.value = Math.min(currentQuestionIndex.value + 1, selectedExam.value.questions.length - 1)\r\n  }"
+      },
+      {
+        "name": "previousQuestion",
+        "visibility": "public",
+        "type": "void",
+        "params": [],
+        "body": "{\r\n    currentQuestionIndex.value = Math.max(currentQuestionIndex.value - 1, 0)\r\n  }"
+      },
+      {
+        "name": "openStudentMonitor",
+        "visibility": "public",
+        "type": "void",
+        "params": [
+          {
+            "name": "studentId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    selectedMonitorStudentId.value = studentId\r\n  }"
+      },
+      {
+        "name": "requestExamFullscreen",
+        "visibility": "public",
+        "type": "void",
+        "params": [],
+        "body": "{\r\n    if (document.fullscreenElement || !document.documentElement.requestFullscreen) return\r\n    document.documentElement.requestFullscreen().catch(() => {\r\n      reportClientExamViolation('FULLSCREEN_REQUEST_REJECTED', 'Student did not enter fullscreen mode')\r\n    })\r\n  }"
+      },
+      {
+        "name": "reportClientExamViolation",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [
+          {
+            "name": "type",
+            "type": "string",
+            "optional": false
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    if (session.role !== 'STUDENT' || !selectedExam.value || selectedExam.value.exam.status !== 'ACTIVE' || currentExamSubmitted.value) return\r\n    const key = `${selectedExam.value.exam.id}:${type}`\r\n    if (reportedClientViolations.has(key)) return\r\n    reportedClientViolations.add(key)\r\n\r\n    try {\r\n      await reportViolationRequest(api, {\r\n        sessionId: selectedExam.value.exam.id,\r\n        type,\r\n        description,\r\n        pointsPenalty: 0\r\n      }, true)\r\n    } catch {\r\n      reportedClientViolations.delete(key)\r\n    }\r\n  }"
+      },
+      {
+        "name": "handleFullscreenChange",
+        "visibility": "public",
+        "type": "void",
+        "params": [],
+        "body": "{\r\n    if (session.role === 'STUDENT' && selectedExam.value?.exam.status === 'ACTIVE' && !document.fullscreenElement) {\r\n      reportClientExamViolation('FULLSCREEN_EXIT', 'Student left fullscreen mode during the exam')\r\n    }\r\n  }"
+      },
+      {
+        "name": "handleWindowBlur",
+        "visibility": "public",
+        "type": "void",
+        "params": [],
+        "body": "{\r\n    reportClientExamViolation('WINDOW_BLUR', 'Student switched away from the exam window')\r\n  }"
+      },
+      {
+        "name": "handleVisibilityChange",
+        "visibility": "public",
+        "type": "void",
+        "params": [],
+        "body": "{\r\n    if (document.visibilityState === 'hidden') {\r\n      reportClientExamViolation('PAGE_HIDDEN', 'Student hid the exam page')\r\n    }\r\n  }"
+      },
+      {
+        "name": "reportViolation",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [],
+        "body": "{\r\n    if (!selectedExam.value || !violationForm.userId) {\r\n      setMessage('Выберите ученика для фиксации нарушения', 'error')\r\n      return\r\n    }\r\n\r\n    if (!violationForm.description.trim()) {\r\n      setMessage('Введите описание нарушения', 'error')\r\n      return\r\n    }\r\n\r\n    try {\r\n      await reportViolationRequest(api, {\r\n        sessionId: selectedExam.value.exam.id,\r\n        userId: violationForm.userId,\r\n        type: 'EXAM_RULE_VIOLATION',\r\n        description: violationForm.description,\r\n        pointsPenalty: Number(violationForm.pointsPenalty || 0)\r\n      })\r\n      Object.assign(violationForm, { userId: null, description: '', pointsPenalty: 0 })\r\n      setMessage('Нарушение зафиксировано', 'success')\r\n    } catch (error) {\r\n      setMessage(error instanceof Error ? error.message : 'Ошибка фиксации нарушения', 'error')\r\n    }\r\n  }"
+      },
+      {
+        "name": "gradeExam",
+        "visibility": "public",
+        "type": "Promise<void>",
+        "params": [],
+        "body": "{\r\n    if (!selectedExam.value) return\r\n    const scores = classStudentsForSelectedExam.value.map((student) => ({\r\n      studentId: student.id,\r\n      rawScore: Number(gradeForm[student.id] || 0)\r\n    }))\r\n    await saveGrades(api, selectedExam.value.exam.id, scores)\r\n    await loadClasses()\r\n    await openExam(selectedExam.value.exam.id)\r\n    setMessage('Итоговые баллы сохранены', 'success')\r\n  }"
+      },
+      {
+        "name": "connectExamSocket",
+        "visibility": "public",
+        "type": "void",
+        "params": [
+          {
+            "name": "examId",
+            "type": "number",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    disconnectExamRealtime(stompClient.value)\r\n    realtimeEvents.value = []\r\n    stompClient.value = connectExamRealtime(examId, {\r\n      onConnected: () => {\r\n        realtimeEvents.value.unshift({\r\n          id: `${Date.now()}-${Math.random()}`,\r\n          type: 'CONNECTED',\r\n          userId: session.userId,\r\n          userName: session.displayName || userNameById(session.userId),\r\n          time: new Date().toLocaleTimeString('ru-RU')\r\n        })\r\n      },\r\n      onMessage: async ({ type, userId }) => {\r\n        realtimeEvents.value.unshift({\r\n          id: `${Date.now()}-${Math.random()}`,\r\n          type,\r\n          userId,\r\n          userName: userNameById(userId),\r\n          time: new Date().toLocaleTimeString('ru-RU')\r\n        })\r\n        try {\r\n          await loadExamDetails(examId, true)\r\n        } catch {\r\n          // Keep the socket session alive even if background refresh fails.\r\n        }\r\n      },\r\n      onError: () => {\r\n        setMessage('Не удалось подключиться к WebSocket мониторинга экзамена', 'error')\r\n      }\r\n    })\r\n  }"
+      },
+      {
+        "name": "userNameById",
+        "visibility": "private",
+        "type": "string",
+        "params": [
+          {
+            "name": "userId",
+            "type": "number | null",
+            "optional": false
+          }
+        ],
+        "body": "{\r\n    if (!userId) return ''\r\n    return users.value.find((user) => user.id === userId)?.fullName || `ID ${userId}`\r\n  }"
+      }
+    ],
+    "definition": "Factory: useExamManagement(options: UseExamManagementOptions). UML public = returned functions/state; private = closure implementation. Creation/import operations omitted from this use case."
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "MessageKind",
+    "kind": "type",
+    "fields": [],
+    "ops": [],
+    "definition": "'info' | 'success' | 'error'"
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "RefLike",
+    "kind": "type",
+    "fields": [],
+    "ops": [],
+    "definition": "{ value: T }"
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "DeactivatableClient",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "deactivate",
+        "type": "() => void",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "SessionState",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "role",
+        "type": "Role",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "userId",
+        "type": "number | null",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "displayName",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "ExamFormState",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "subject",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "classId",
+        "type": "number | null",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "scheduledStartTime",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "endsAt",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "ViolationFormState",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "userId",
+        "type": "number | null",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "pointsPenalty",
+        "type": "number",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  },
+  {
+    "file": "frontend-vue/src/composables/useExamManagement.ts",
+    "name": "UseExamManagementOptions",
+    "kind": "interface",
+    "fields": [
+      {
+        "name": "api",
+        "type": "ApiClient",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "session",
+        "type": "SessionState",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "exams",
+        "type": "RefLike<ExamSession[]>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "users",
+        "type": "RefLike<UserResponse[]>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "selectedExam",
+        "type": "RefLike<ExamDetails | null>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "realtimeEvents",
+        "type": "RefLike<Array<{ id: string; type: string; time: string; userId?: number | null; userName?: string }>>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "stompClient",
+        "type": "RefLike<DeactivatableClient | null>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "currentQuestionIndex",
+        "type": "RefLike<number>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "selectedMonitorStudentId",
+        "type": "RefLike<number | null>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "examStatusFilter",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "examForm",
+        "type": "ExamFormState",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "examQuestionsText",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "examQuestionFileName",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "examFileInputKey",
+        "type": "RefLike<number>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "examCreateSuccess",
+        "type": "RefLike<boolean>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "answerSaveSuccess",
+        "type": "RefLike<boolean>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "answerDrafts",
+        "type": "Record<number, string>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "gradeForm",
+        "type": "Record<number, number>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "violationForm",
+        "type": "ViolationFormState",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "now",
+        "type": "RefLike<number>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "loadClasses",
+        "type": "() => Promise<void>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "loadExams",
+        "type": "() => Promise<void>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "currentPage",
+        "type": "RefLike<string>",
+        "optional": false,
+        "visibility": "public"
+      },
+      {
+        "name": "setMessage",
+        "type": "(text: string, kind?: MessageKind) => void",
+        "optional": false,
+        "visibility": "public"
+      }
+    ],
+    "ops": []
+  }
+]
